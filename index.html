@@ -1,0 +1,407 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ULVA + ALCATÉIA — Portais</title>
+<style>
+  :root {
+    --accent: #2FA84F;
+    --accent-dark: #1F8A3D;
+    --accent-wolf: #5B3DE0;
+    --accent-wolf-dark: #4A2FC0;
+  }
+  body { margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #15161A; color: #F2F1ED; }
+  a { color: inherit; text-decoration: none; }
+  * { box-sizing: border-box; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-alcateia { background: var(--accent-wolf); color: #fff; }
+  .btn-alcateia:hover { background: var(--accent-wolf-dark); }
+  .card { transition: transform .15s ease, box-shadow .15s ease; }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.4); }
+  .tool-item { cursor: pointer; padding: 10px 14px; border-radius: 10px; display: flex; align-items: center; gap: 10px; background: transparent; border-left: 3px solid transparent; }
+  .tool-item:hover { background: rgba(255,255,255,0.03); }
+  .tool-item.active { background: rgba(47,168,79,0.1); border-left-color: var(--accent); }
+  .tool-item.active.alc { background: rgba(91,61,224,0.1); border-left-color: var(--accent-wolf); }
+  .tool-item .icon { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #262A44; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .tool-item.active .icon { background: var(--accent); }
+  .tool-item.active.alc .icon { background: var(--accent-wolf); }
+  .tool-item .name { font-size: 13px; font-weight: 700; color: #D6D5CF; }
+  .tool-item.active .name { color: #fff; }
+  .tool-item .status { font-size: 11px; color: #6E6D67; margin-top: 2px; }
+  .tool-item.active .status { color: var(--accent); }
+  .tool-item.active.alc .status { color: var(--accent-wolf); }
+  @media (max-width: 760px) {
+    .hero-title { font-size: 34px !important; }
+    .portal-row { flex-direction: column !important; }
+    .nav-links { display: none !important; }
+    .about-row { flex-direction: column !important; }
+  }
+</style>
+</head>
+<body>
+
+<div style="width: 100%; min-width: 0;">
+
+  <!-- HEADER -->
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; border-bottom: 1px solid #2B2D33; flex-wrap: wrap; gap: 16px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 36px; height: 36px; border-radius: 8px; overflow: hidden; flex-shrink: 0;">
+        <img src="assets/logo-ulva.png" alt="ULVA" style="width: 100%; height: 100%; object-fit: cover;">
+      </div>
+      <span style="font-size: 19px; font-weight: 700; letter-spacing: -0.3px;">ulva.com.br</span>
+    </div>
+    <nav class="nav-links" style="display: flex; gap: 32px; font-size: 14px; font-weight: 600; color: #A3A29B;">
+      <a href="#portais">Portais</a>
+      <a href="#ferramentas">Ferramentas</a>
+      <a href="#quem-somos">Quem Somos</a>
+      <a href="#contato">Contato</a>
+    </nav>
+    <a href="#portais" class="btn-primary" style="display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 700;">
+      <img src="assets/logo-ulva.png" alt="" style="width: 16px; height: 16px; border-radius: 50%; object-fit: cover;">
+      Acessar Portal
+    </a>
+  </header>
+
+  <!-- HERO -->
+  <section style="position: relative; overflow: hidden; padding: 96px 48px 80px; text-align: center; max-width: none; margin: 0;">
+    <video autoplay muted loop playsinline style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 0.22; filter: grayscale(0.15);">
+      <source src="assets/lobo-intro.mp4" type="video/mp4">
+    </video>
+    <div style="position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, rgba(21,22,26,0.55) 0%, rgba(21,22,26,0.88) 70%, #15161A 100%);"></div>
+    <svg style="position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="hero-dots" width="64" height="64" patternUnits="userSpaceOnUse">
+          <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.035)" stroke-width="1"></circle>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#hero-dots)"></rect>
+    </svg>
+    <svg width="380" height="380" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" style="position: absolute; right: -40px; bottom: -60px; z-index: 0; pointer-events: none;">
+      <path d="M12 3 7 7l-4-1 2 4-2 3 3 1 1 4 2-2h2l2 2 1-4 3-1-2-3 2-4-4 1-3-4Z"></path>
+      <path d="M9.5 13.2 8.3 17"></path>
+      <path d="M14.5 13.2 15.7 17"></path>
+    </svg>
+    <div style="position: relative; z-index: 1; max-width: 820px; margin: 0 auto;">
+    <div style="display: inline-flex; align-items: center; gap: 8px; background: #1E2025; border: 1px solid #2B2D33; color: #F2F1ED; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; padding: 6px 14px 6px 8px; border-radius: 999px; margin-bottom: 24px;">
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent);"></span>
+      <span>ULVA</span>
+      <span style="color: #4A4C52;">×</span>
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-wolf);"></span>
+      <span>ALCATÉIA</span>
+    </div>
+    <h1 class="hero-title" style="font-size: 48px; line-height: 1.15; font-weight: 800; letter-spacing: -1px; margin: 0 0 20px; color: #fff;">Prevenção de perdas e gestão de loja, em um só lugar</h1>
+    <p style="font-size: 18px; line-height: 1.6; color: #A3A29B; margin: 0 0 20px;">Escolha abaixo qual portal você quer acessar: ULVA para gestão do dia a dia da loja, ou ALCATÉIA para prevenção de perdas da rede.</p>
+    <div style="display: inline-flex; align-items: center; gap: 10px; background: rgba(47,168,79,0.1); border: 1px solid rgba(47,168,79,0.35); color: #D8F3DE; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 999px; margin-bottom: 36px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"></rect><line x1="12" y1="18" x2="12" y2="18.01"></line></svg>
+      Seu gerente com os dados certos, e no piso da loja que é o lugar correto.
+    </div>
+    <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+      <a href="#portais" class="btn-primary" style="padding: 14px 28px; border-radius: 10px; font-size: 15px; font-weight: 700;">Escolher meu Portal</a>
+      <a href="#quem-somos" style="padding: 14px 28px; border-radius: 10px; font-size: 15px; font-weight: 700; border: 1.5px solid #3A3C43; color: #F2F1ED;">Quem Somos</a>
+    </div>
+    </div>
+  </section>
+
+  <!-- PORTAIS -->
+  <section id="portais" style="padding: 40px 48px 100px; max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 96px;">
+
+      <!-- ULVA ROW -->
+      <div class="portal-row" style="display: flex; align-items: center; gap: 56px; flex-wrap: wrap;">
+        <div style="flex: 1 1 320px; display: flex; justify-content: center;">
+          <div style="width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(47,168,79,0.18), rgba(47,168,79,0) 70%); display: flex; align-items: center; justify-content: center;">
+            <img src="assets/logo-ulva.png" alt="ULVA" style="width: 180px; height: 180px; border-radius: 50%; object-fit: cover;">
+          </div>
+        </div>
+        <div style="flex: 1 1 380px;">
+          <h3 style="font-size: 28px; font-weight: 800; margin: 0 0 6px; color: #fff;">ULVA</h3>
+          <p style="font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px;">Gestão de Loja</p>
+          <p style="font-size: 15px; color: #A3A29B; line-height: 1.65; margin: 0 0 28px;">Gaste menos tempo acompanhando validade de produtos e tarefas do dia a dia. Notificações automáticas avisam a equipe antes de cada produto vencer, e cada alerta já vira tarefa pra alguém resolver.</p>
+          <a href="https://lucasbhpara.github.io/gestao-loja-app/portal-admin.html" target="_blank" rel="noopener" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 700;">
+            <img src="assets/logo-ulva.png" alt="" style="width: 16px; height: 16px; border-radius: 50%; object-fit: cover;">
+            Entrar no Portal ULVA →
+          </a>
+        </div>
+      </div>
+
+      <!-- ALCATEIA ROW -->
+      <div class="portal-row" style="display: flex; align-items: center; gap: 56px; flex-wrap: wrap-reverse;">
+        <div style="flex: 1 1 380px;">
+          <div style="display: inline-block; background: #26282F; color: #A3A29B; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; margin-bottom: 12px;">Em breve</div>
+          <h3 style="font-size: 28px; font-weight: 800; margin: 0 0 6px; color: #fff;">ALCATÉIA</h3>
+          <p style="font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent-wolf); margin: 0 0 16px;">Prevenção de Perdas</p>
+          <p style="font-size: 15px; color: #A3A29B; line-height: 1.65; margin: 0 0 28px;">Checklist de auditoria por setor, tratativa dos itens fora do padrão e controle de validade loja a loja — tudo padronizado pra toda a rede, com acompanhamento em tempo real.</p>
+          <span class="btn-alcateia" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 700; opacity: 0.55;">
+            <img src="assets/logo-alcateia.png" alt="" style="width: 16px; height: 16px; border-radius: 50%; object-fit: cover;">
+            Em desenvolvimento
+          </span>
+        </div>
+        <div style="flex: 1 1 320px; display: flex; justify-content: center;">
+          <div style="width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(91,61,224,0.2), rgba(91,61,224,0) 70%); display: flex; align-items: center; justify-content: center;">
+            <img src="assets/logo-alcateia.png" alt="ALCATÉIA" style="width: 180px; height: 180px; border-radius: 50%; object-fit: cover;">
+          </div>
+        </div>
+      </div>
+
+  </section>
+
+  <!-- RESULTADOS / DASHBOARD -->
+  <section style="padding: 0 48px 100px; max-width: 1080px; margin: 0 auto;">
+    <h2 style="font-size: 26px; font-weight: 800; text-align: center; margin: 0 0 8px; color: #fff;">Prevenção acompanhada de perto</h2>
+    <p style="font-size: 14px; color: #A3A29B; text-align: center; margin: 0 0 40px;">Exemplo de como os números aparecem no Portal</p>
+
+    <div style="background: #1E2025; border: 1px solid #2B2D33; border-radius: 20px; padding: 40px; display: flex; gap: 48px; flex-wrap: wrap;">
+
+      <!-- STAT TILES -->
+      <div style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 22px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(91,61,224,0.18); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-wolf)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="m9 14 2 2 4-4"></path></svg>
+          </div>
+          <div>
+            <div style="font-size: 26px; font-weight: 800; color: #fff; line-height: 1;">92%</div>
+            <div style="font-size: 12px; color: #A3A29B; margin-top: 4px;">Aproveitamento médio do checklist</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(47,168,79,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg>
+          </div>
+          <div>
+            <div style="font-size: 26px; font-weight: 800; color: #fff; line-height: 1;">1.240</div>
+            <div style="font-size: 12px; color: #A3A29B; margin-top: 4px;">Produtos monitorados por dia</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(47,168,79,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>
+          </div>
+          <div>
+            <div style="font-size: 26px; font-weight: 800; color: #fff; line-height: 1;">-38%</div>
+            <div style="font-size: 12px; color: #A3A29B; margin-top: 4px;">Redução de perdas por validade</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHART -->
+      <div style="flex: 2 1 420px; min-width: 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+          <span style="font-size: 13px; font-weight: 700; color: #fff;">Perdas por validade — últimos 6 meses</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #A3A29B;">
+            <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--accent);"></span> % de perdas
+          </span>
+        </div>
+        <svg viewBox="0 0 420 180" style="width: 100%; height: auto; display: block;">
+          <line x1="0" y1="20" x2="420" y2="20" stroke="#2B2D33" stroke-width="1"></line>
+          <line x1="0" y1="70" x2="420" y2="70" stroke="#2B2D33" stroke-width="1"></line>
+          <line x1="0" y1="120" x2="420" y2="120" stroke="#2B2D33" stroke-width="1"></line>
+          <line x1="0" y1="170" x2="420" y2="170" stroke="#2B2D33" stroke-width="1"></line>
+
+          <rect x="12" y="46" width="44" height="124" rx="6" fill="var(--accent)" opacity="0.9"></rect>
+          <rect x="80" y="62" width="44" height="108" rx="6" fill="var(--accent)" opacity="0.8"></rect>
+          <rect x="148" y="78" width="44" height="92" rx="6" fill="var(--accent)" opacity="0.7"></rect>
+          <rect x="216" y="96" width="44" height="74" rx="6" fill="var(--accent)" opacity="0.65"></rect>
+          <rect x="284" y="112" width="44" height="58" rx="6" fill="var(--accent)" opacity="0.55"></rect>
+          <rect x="352" y="128" width="44" height="42" rx="6" fill="var(--accent)" opacity="0.45"></rect>
+
+          <text x="34" y="178" text-anchor="middle" font-size="10" fill="#6E6D67">Mai</text>
+          <text x="102" y="178" text-anchor="middle" font-size="10" fill="#6E6D67">Jun</text>
+          <text x="170" y="178" text-anchor="middle" font-size="10" fill="#6E6D67">Jul</text>
+          <text x="238" y="178" text-anchor="middle" font-size="10" fill="#6E6D67">Ago</text>
+          <text x="306" y="178" text-anchor="middle" font-size="10" fill="#6E6D67">Set</text>
+          <text x="374" y="178" text-anchor="middle" font-size="10" fill="#6E6D67">Out</text>
+        </svg>
+        <p style="font-size: 11px; color: #6E6D67; margin: 10px 0 0;">Ilustrativo — os números reais aparecem no Portal.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FERRAMENTAS (GLOSSÁRIO) -->
+  <section id="ferramentas" style="padding: 0 48px 100px; max-width: 1080px; margin: 0 auto;">
+    <h2 style="font-size: 26px; font-weight: 800; text-align: center; margin: 0 0 8px; color: #fff;">Glossário de ferramentas</h2>
+    <p style="font-size: 14px; color: #A3A29B; text-align: center; margin: 0 0 40px;">Clique em uma ferramenta pra ver do que se trata — algumas já com a tela real do Portal ULVA</p>
+
+    <div style="background: #1E2025; border: 1px solid #2B2D33; border-radius: 20px; padding: 28px; display: flex; gap: 32px; flex-wrap: wrap;">
+
+      <!-- TOOL LIST -->
+      <div id="tool-list" style="flex: 1 1 220px; display: flex; flex-direction: column; gap: 4px; max-height: 480px; overflow-y: auto;"></div>
+
+      <!-- TOOL DETAIL -->
+      <div style="flex: 2 1 480px; min-width: 0;">
+        <div style="background: #15161A; border: 1px solid #2B2D33; border-radius: 14px; overflow: hidden; margin-bottom: 18px; min-height: 180px; display: flex; align-items: center; justify-content: center;">
+          <img id="tool-img" src="" alt="" style="width: 100%; height: auto; display: none;">
+          <div id="tool-placeholder" style="display: none; flex-direction: column; align-items: center; gap: 10px; padding: 36px 24px;">
+            <img id="tool-placeholder-logo" src="" alt="" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; opacity: 0.6;">
+            <span id="tool-placeholder-text" style="font-size: 12px; color: #6E6D67;"></span>
+          </div>
+        </div>
+        <h3 id="tool-name" style="font-size: 18px; font-weight: 800; margin: 0 0 8px; color: #fff;"></h3>
+        <p id="tool-desc" style="font-size: 14px; color: #A3A29B; line-height: 1.6; margin: 0;"></p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- QUEM SOMOS -->
+  <section id="quem-somos" style="background: #191B20; padding: 72px 48px;">
+    <div style="max-width: 1080px; margin: 0 auto;">
+      <div class="about-row" style="display: flex; gap: 56px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 56px;">
+        <div style="flex: 1 1 320px;">
+          <h2 style="font-size: 28px; font-weight: 800; margin: 0 0 16px; color: #fff;">Quem Somos</h2>
+          <p style="font-size: 15px; color: #A3A29B; line-height: 1.7; margin: 0 0 20px;">Somos uma equipe focada em resolver, na prática, alguns dos problemas que todo supermercado enfrenta, usando ferramentas que ajudam no dia a dia a diminuir o prejuízo da loja. Unimos nossos dois sistemas, ULVA e ALCATÉIA, em um só endereço para facilitar ainda mais a nossa operação — e a de quem também usa.</p>
+          <h4 style="font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 8px;">Nossa história</h4>
+          <p style="font-size: 14px; color: #A3A29B; line-height: 1.7; margin: 0;">O ULVA nasceu dentro da operação, onde tudo acontece de verdade: no calor da loja, tratando de situações reais do dia a dia. Foi criado por quem vive a rotina de perto, não por quem observa de fora — e foi crescendo conforme novas necessidades apareciam no caminho, até virar também a base do ALCATÉIA, pensado pra levar essa mesma lógica à prevenção de perdas de toda a rede.</p>
+        </div>
+        <div style="flex: 1 1 320px; display: flex; flex-direction: column; gap: 20px;">
+          <div style="display: flex; gap: 14px; align-items: flex-start;">
+            <div style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: var(--accent-wolf); display: flex; align-items: center; justify-content: center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"></path><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"></path><path d="M10 6h4"></path><path d="M10 10h4"></path><path d="M10 14h4"></path><path d="M10 18h4"></path></svg>
+            </div>
+            <div>
+              <h4 style="font-size: 15px; font-weight: 700; margin: 0 0 4px; color: #fff;">Nasceu dentro da operação</h4>
+              <p style="font-size: 13px; color: #A3A29B; line-height: 1.5; margin: 0;">Criado por quem lida com loja no dia a dia, não por fora dela.</p>
+            </div>
+          </div>
+          <div style="display: flex; gap: 14px; align-items: flex-start;">
+            <div style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: var(--accent); display: flex; align-items: center; justify-content: center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+            </div>
+            <div>
+              <h4 style="font-size: 15px; font-weight: 700; margin: 0 0 4px; color: #fff;">Um só domínio, duas frentes</h4>
+              <p style="font-size: 13px; color: #A3A29B; line-height: 1.5; margin: 0;">ULVA cuida da gestão da loja; ALCATÉIA cuida da prevenção de perdas.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="font-size: 20px; font-weight: 800; text-align: center; margin: 0 0 40px; color: #fff;">Duas soluções, um só compromisso</h3>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px;">
+        <div>
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(47,168,79,0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+          </div>
+          <h4 style="font-size: 16px; font-weight: 700; margin: 0 0 8px; color: #fff;">Controle de validade</h4>
+          <p style="font-size: 14px; color: #A3A29B; line-height: 1.55; margin: 0;">Acompanhamento automático de datas críticas, com alertas antes do vencimento.</p>
+        </div>
+        <div>
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(91,61,224,0.18); display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-wolf)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="m9 14 2 2 4-4"></path></svg>
+          </div>
+          <h4 style="font-size: 16px; font-weight: 700; margin: 0 0 8px; color: #fff;">Checklist &amp; auditoria</h4>
+          <p style="font-size: 14px; color: #A3A29B; line-height: 1.55; margin: 0;">Processos padronizados de prevenção de perdas, por loja e por setor.</p>
+        </div>
+        <div>
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(47,168,79,0.15); display: flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
+          </div>
+          <h4 style="font-size: 16px; font-weight: 700; margin: 0 0 8px; color: #fff;">Notificações e tarefas</h4>
+          <p style="font-size: 14px; color: #A3A29B; line-height: 1.55; margin: 0;">Cada alerta vira tarefa, direto na aba do colaborador responsável.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTATO -->
+  <section id="contato" style="padding: 72px 48px; text-align: center;">
+    <div style="max-width: 560px; margin: 0 auto;">
+      <h2 style="font-size: 26px; font-weight: 800; margin: 0 0 12px; color: #fff;">Fale com a gente</h2>
+      <p style="font-size: 15px; color: #A3A29B; line-height: 1.6; margin: 0 0 32px;">Dúvidas, sugestões ou interesse em levar o ULVA ou o ALCATÉIA pra sua loja?</p>
+      <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+        <a href="mailto:lucasgerente4@gmail.com" class="btn-primary" style="padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 700;">lucasgerente4@gmail.com</a>
+        <span style="padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 700; border: 1.5px solid #3A3C43; color: #F2F1ED;">(31) 99964-2091</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="padding: 32px 48px; text-align: center; border-top: 1px solid #2B2D33;">
+    <p style="font-size: 13px; color: #6E6D67; margin: 0 0 6px;">© 2026 ulva.com.br — ULVA &amp; ALCATÉIA</p>
+    <p style="font-size: 12px; color: #55544F; margin: 0;">by Lucas Alberto</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var ACCENT = '#2FA84F';
+  var ACCENT_WOLF = '#5B3DE0';
+  var LOGO_ULVA = 'assets/logo-ulva.png';
+  var LOGO_ALCATEIA = 'assets/logo-alcateia.png';
+
+  var tools = [
+    { id: 'checklist', icon: '✅', name: 'Checklist', status: 'App + Portal ULVA', img: 'assets/shot-checklist.jpg', desc: 'Checklist de auditoria por setor, com a evolução de cada um ao longo da semana. Organiza a rotina de conferência da loja e mostra onde o time está deixando passar mais.' },
+    { id: 'colaboradores', icon: '👥', name: 'Colaboradores', status: 'App + Portal ULVA', img: null, desc: 'Cadastro da equipe da loja, usado como base para distribuir tarefas, acompanhar o checklist por responsável e organizar a escala do dia a dia.' },
+    { id: 'criar-tarefa', icon: '✏️', name: 'Criar tarefa', status: 'App ULVA', img: null, desc: 'Criação manual de tarefas avulsas pra equipe, além das que já nascem automaticamente dos alertas de validade — pra nada depender só da memória de quem está na loja.' },
+    { id: 'perdas', icon: '📉', name: 'Perdas e Desperdício', status: 'App + Portal ULVA', img: 'assets/shot-perdas.jpg', desc: 'Painel que reúne os registros de perda e desperdício da loja, por setor e por período, pra enxergar de onde está saindo o prejuízo e agir antes que ele cresça.' },
+    { id: 'validade', icon: '📅', name: 'Validade', status: 'App + Portal ULVA', img: 'assets/shot-validade.jpg', desc: 'Cadastra os produtos da loja com data de validade e dispara alertas automáticos antes do vencimento. Cada aviso já nasce como tarefa pra alguém da equipe resolver — nada fica só no "alguém vai ver depois".' },
+    { id: 'validade-app', icon: '📅', name: 'Validade (tela do App)', status: 'App ULVA', img: 'assets/shot-validade-app.jpg', desc: 'A mesma gestão de validade do Portal, só que direto no celular: vencidos, vencendo em 7 dias e total cadastrado, filtráveis por setor, com tratativas em aberto visíveis no topo. Dá pra acompanhar sem estar na loja atrás da mesa.' },
+    { id: 'inventario', icon: '📦', name: 'Inventário', status: 'App + Portal ULVA', img: 'assets/shot-inventario.jpg', desc: 'Contagem consolidada do inventário por setor — a contagem em si é feita no celular, e aqui o gestor compara com o estoque e exporta a planilha.' },
+    { id: 'estoque', icon: '🗄️', name: 'Estoque Loja', status: 'App + Portal ULVA', img: 'assets/shot-estoque.jpg', desc: 'Consulta ao estoque real da loja, direto da última planilha importada — busca por código ou nome, com alerta de estoque crítico pra curva A.' },
+    { id: 'mural', icon: '🔔', name: 'Mural de Avisos', status: 'App + Portal ULVA', img: 'assets/shot-mural.jpg', desc: 'Mural de comunicados internos da loja, pra avisos e orientações chegarem até a equipe sem depender de grupo de WhatsApp ou papel colado na parede.' },
+    { id: 'ocorrencias', icon: '⚠️', name: 'Ocorrências', status: 'App + Portal ULVA', img: 'assets/shot-ocorrencias.jpg', desc: 'Registro de ocorrências relatadas pelos colaboradores, separadas por abertas, resolvidas e todas — pra nada ficar só no boca a boca.' },
+    { id: 'conferencia', icon: '🧾', name: 'Conferência', status: 'App + Portal ULVA', img: 'assets/shot-conferencia.jpg', desc: 'Conferência de nota fiscal, criada a partir de um PDF ou enviada pelo encarregado, pra bater o que chegou com o que foi pedido e sinalizar divergência rápido.' },
+    { id: 'pedidos', icon: '🛒', name: 'Pedidos', status: 'App + Portal ULVA', img: 'assets/shot-pedidos.jpg', desc: 'Pedidos enviados pelo encarregado e catálogo de produtos com código, embalagem, estoque no CD e giro semanal — tudo num só lugar pra decidir o que repor.' },
+    { id: 'resultados', icon: '📊', name: 'Painel Resultados', status: 'App + Portal ULVA', img: 'assets/shot-resultados.jpg', desc: 'Visão geral dos indicadores da loja em um só lugar — validade, checklist, perdas — pra acompanhar o resultado do mês sem precisar abrir tela por tela.' },
+    { id: 'vendas', icon: '📈', name: 'Vendas', status: 'App + Portal ULVA', img: 'assets/shot-vendas.jpg', desc: 'Mostra o desempenho de vendas por produto organizado em curva ABC, ajudando o gestor a identificar rápido o que mais vende, o que está parado e onde focar o reabastecimento.' },
+    { id: 'mapa-loja', icon: '🗺️', name: 'Mapa da Loja', status: 'App + Portal ULVA', img: 'assets/shot-mapa.jpg', desc: 'Mapa interativo da loja: toque numa área e veja as fotos do posicionamento dos produtos daquele setor, com zoom pra conferir detalhe. Serve de referência visual pra organização do espaço e planejamento de layout direto do celular.' },
+    { id: 'jornal-ofertas', icon: '📰', name: 'Jornal de Ofertas', status: 'Portal ULVA', img: 'assets/shot-jornal.jpg', desc: 'Envio do encarte de promoções mais recente em PDF — o mesmo arquivo que aparece pra equipe no app, sempre atualizado com a oferta da semana.' },
+    { id: 'pontas', icon: '🗂️', name: 'Pontas e Pontos Extras', status: 'App + Portal ULVA', img: 'assets/shot-pontas.jpg', desc: 'Controle das pontas de gôndola e pontos extras promocionais da loja, com foto de cada montagem, pra acompanhar o que está exposto e por quanto tempo.' },
+    { id: 'sobre', icon: 'ℹ️', name: 'Sobre', status: 'App ULVA', img: null, desc: 'Informações sobre a versão do sistema e dados gerais do ULVA.' },
+    { id: 'alc-checklist', icon: '🏬', name: 'Checklist para várias unidades', status: 'ALCATÉIA · em breve', img: null, desc: 'Checklist de prevenção de perdas aplicado a várias lojas da rede ao mesmo tempo, permitindo comparar unidades e acompanhar o padrão de cada uma.' },
+    { id: 'alc-acessos', icon: '🔐', name: 'Tipos de acesso diferentes', status: 'ALCATÉIA · em breve', img: null, desc: 'Níveis de acesso por perfil — administrador, supervisor, agente de prevenção — cada um vendo só o que precisa da operação.' },
+    { id: 'alc-validade', icon: '📅', name: 'Controle de Validade', status: 'ALCATÉIA · em breve', img: null, desc: 'Controle de validade de produtos com a mesma lógica do ULVA, agora olhando pra rede inteira sob a ótica de prevenção de perdas.' },
+    { id: 'alc-localizacao', icon: '📍', name: 'Localização em tempo real', status: 'ALCATÉIA · em breve', img: null, desc: 'Acompanhamento da localização em tempo real, útil pra prevenção de perdas e gestão da equipe em campo entre as lojas da rede.' },
+    { id: 'alc-tarefas', icon: '⚙️', name: 'Tarefas automáticas', status: 'ALCATÉIA · em breve', img: null, desc: 'Tarefas que nascem automaticamente a partir de regras do sistema, sem precisar criar uma por uma na mão.' },
+    { id: 'alc-acesso-multi', icon: '💻', name: 'Portal e App', status: 'ALCATÉIA · em breve', img: null, desc: 'Duas formas de acessar o ALCATÉIA: pelo portal web, pra gestão e análise, ou pelo aplicativo, pra quem está em campo.' }
+  ];
+
+  var listEl = document.getElementById('tool-list');
+  var imgEl = document.getElementById('tool-img');
+  var placeholderEl = document.getElementById('tool-placeholder');
+  var placeholderLogoEl = document.getElementById('tool-placeholder-logo');
+  var placeholderTextEl = document.getElementById('tool-placeholder-text');
+  var nameEl = document.getElementById('tool-name');
+  var descEl = document.getElementById('tool-desc');
+
+  function isAlc(t) { return t.status.indexOf('ALCATÉIA') === 0; }
+
+  function render(selectedId) {
+    listEl.innerHTML = '';
+    var selected = null;
+    tools.forEach(function (t) {
+      if (t.id === selectedId) selected = t;
+      var row = document.createElement('div');
+      row.className = 'tool-item' + (t.id === selectedId ? ' active' : '') + (isAlc(t) ? ' alc' : '');
+      row.innerHTML = '<span class="icon">' + t.icon + '</span><div><div class="name">' + t.name + '</div><div class="status">' + t.status + '</div></div>';
+      row.addEventListener('click', function () { render(t.id); });
+      listEl.appendChild(row);
+    });
+    if (!selected) selected = tools[0];
+
+    nameEl.textContent = selected.name;
+    descEl.textContent = selected.desc;
+    if (selected.img) {
+      imgEl.src = selected.img;
+      imgEl.alt = selected.name;
+      imgEl.style.display = 'block';
+      placeholderEl.style.display = 'none';
+    } else {
+      imgEl.style.display = 'none';
+      placeholderEl.style.display = 'flex';
+      var alc = selected.id.indexOf('alc-') === 0;
+      placeholderLogoEl.src = alc ? LOGO_ALCATEIA : LOGO_ULVA;
+      placeholderTextEl.textContent = alc ? 'ALCATÉIA ainda está em desenvolvimento — tela chega em breve' : 'Captura de tela real em breve';
+    }
+  }
+
+  render('validade');
+})();
+</script>
+
+</body>
+</html>
+
+</body></html>
