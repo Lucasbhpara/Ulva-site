@@ -291,11 +291,11 @@
     <form id="login-form" style="display:flex;flex-direction:column;gap:14px;">
       <div class="field">
         <label for="matricula">Matrícula</label>
-        <input id="matricula" type="text" inputmode="numeric" placeholder="Ex: 00482" required>
+        <input id="matricula" type="text" inputmode="numeric" placeholder="Ex: 00482" autocomplete="off" required>
       </div>
       <div class="field">
         <label for="senha">Senha</label>
-        <input id="senha" type="password" placeholder="••••••••" required>
+        <input id="senha" type="password" placeholder="••••••••" autocomplete="new-password" required>
       </div>
       <button type="submit" class="btn btn-primary">Entrar</button>
     </form>
