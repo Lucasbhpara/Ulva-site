@@ -401,5 +401,66 @@
 })();
 </script>
 
+<script>
+/* Contador de visitas do ulva.com.br — grava no banco do ULVA (tabela site_visitas).
+   Não guarda nome nem IP. Para não contar as suas próprias visitas, abra uma vez
+   ulva.com.br/?nao_contar=1 em cada aparelho seu (e ?contar=1 para voltar a contar). */
+(function () {
+  var URL_API = 'https://llstmcmgormolhbnszap.supabase.co/rest/v1/site_visitas';
+  var CHAVE = 'sb_publishable_Kk5u4REY7PUWKMpx9wlZnA_BXgfqrxF';
+  function ler(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function gravar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  var q = new URLSearchParams(location.search);
+  if (q.get('nao_contar') === '1') gravar('ulva_nao_contar', '1');
+  if (q.get('contar') === '1') { try { localStorage.removeItem('ulva_nao_contar'); } catch (e) {} }
+  if (ler('ulva_nao_contar') === '1' || navigator.webdriver) return;
+
+  var visitante = ler('ulva_visitante'), novo = false;
+  if (!visitante) {
+    visitante = (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).slice(0, 20);
+    gravar('ulva_visitante', visitante); novo = true;
+  }
+  var utm = (q.get('utm_source') || '').slice(0, 60);
+  function origemDe() {
+    var u = utm.toLowerCase();
+    var r = '';
+    try { r = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : ''; } catch (e) {}
+    var t = u || r;
+    if (!t || r === location.hostname && !u) return 'Direto';
+    if (/instagram|^ig$/.test(t)) return 'Instagram';
+    if (/facebook|^fb$|fb\.com|fb\.me/.test(t)) return 'Facebook';
+    if (/linkedin|lnkd\.in/.test(t)) return 'LinkedIn';
+    if (/whatsapp|wa\.me/.test(t)) return 'WhatsApp';
+    if (/google/.test(t)) return 'Google';
+    if (/youtube|youtu\.be/.test(t)) return 'YouTube';
+    if (/bing|yahoo|duckduckgo/.test(t)) return 'Outras buscas';
+    if (u) return utm;
+    return 'Outros sites';
+  }
+  var dispositivo = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Celular' : 'Computador';
+  var base = { pagina: location.pathname.slice(0, 200), origem: origemDe(), utm_source: utm || null,
+    utm_campaign: (q.get('utm_campaign') || '').slice(0, 80) || null, dispositivo: dispositivo, visitante: visitante };
+  function enviar(evento, extra) {
+    var corpo = Object.assign({}, base, { evento: evento, novo: !!(extra && extra.novo) });
+    try {
+      fetch(URL_API, { method: 'POST', keepalive: true,
+        headers: { 'apikey': CHAVE, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(corpo) }).catch(function () {});
+    } catch (e) {}
+  }
+  // Uma visita por sessão (recarregar a página não conta de novo)
+  var jaContou = false;
+  try { jaContou = sessionStorage.getItem('ulva_contou') === '1'; sessionStorage.setItem('ulva_contou', '1'); } catch (e) {}
+  if (!jaContou) enviar('visita', { novo: novo });
+  document.addEventListener('click', function (ev) {
+    var a = ev.target.closest && ev.target.closest('a');
+    if (!a) return;
+    var h = a.getAttribute('href') || '';
+    if (h.indexOf('/ulva') === 0) enviar('clique_portal_ulva');
+    else if (h.indexOf('/alcateia') === 0) enviar('clique_portal_alcateia');
+    else if (h.indexOf('mailto:') === 0) enviar('clique_contato');
+  }, true);
+})();
+</script>
 </body>
 </html>
