@@ -11584,6 +11584,385 @@ async function alternarAtivoPerguntaVisita(id, ativo) {
 
 
 // =============================================================================
+// Relatório mensal — gerador (cálculo + HTML do PDF). MESMO código do app:
+// gestao-loja-app/src/data/relatorioMensalHtml.ts (convertido para JS).
+// Se mudar lá, traga para cá — e vice-versa.
+// =============================================================================
+const RMX_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const RMX_SETOR_CLASSE = {
+  "PERECIVEIS": "Frios e Laticínios",
+  "MERCEARIA LIQUIDA": "Bebidas",
+  "ACOUGUE/SALGADOS/DEFUMADO": "Açougue",
+  "BOMBONIERE/MATINAIS": "Bomboniere e Matinais",
+  "PERFUMARIA/HIG PESSOAL": "Higiene e Perfumaria",
+  "PADARIA FORN/FAB PROPRIA": "Padaria",
+  "MERCEARIA SALGADA": "Mercearia Salgada",
+  "MERCEARIA DOCE": "Mercearia Doce",
+  "BAZAR": "Bazar",
+  "LIMPEZA": "Limpeza",
+  "CEREAIS": "Cereais",
+  "HORTIFRUTIGRANJEIROS": "Hortifrúti",
+  "MARGEM GARANTIDA": "Hortifrúti (margem garantida)",
+  "MARGEM GARANTIDA BAZAR": "Bazar (margem garantida)",
+  "SEM CLASSIFICACAO": "Sem classificação"
+};
+const RMX_SETOR_EQUIPE = {
+  gerencia: "Gerência",
+  cpd: "CPD",
+  acougue: "Açougue",
+  frios: "Frios",
+  padaria: "Padaria",
+  flv: "FLV",
+  mercearia: "Mercearia",
+  "frente-caixa": "Frente de Caixa",
+  deposito: "Depósito",
+  prevencao: "Prevenção",
+  promotores: "Promotores"
+};
+const RMX_VENDA_SETOR_PERDAS = {
+  flv: ["HORTIFRUTIGRANJEIROS"],
+  padaria: ["PADARIA FORN/FAB PROPRIA"],
+  acougue: ["ACOUGUE/SALGADOS/DEFUMADO"],
+  frios: ["PERECIVEIS"],
+  mercearia: ["MERCEARIA LIQUIDA", "MERCEARIA SALGADA", "MERCEARIA DOCE", "CEREAIS", "BOMBONIERE/MATINAIS", "LIMPEZA", "PERFUMARIA/HIG PESSOAL", "BAZAR"]
+};
+const RMX_PAGAMENTO = {
+  "DINHEIRO": "Dinheiro",
+  "CARTAO CREDITO": "Cartão de crédito",
+  "CARTAO DEBITO": "Cartão de débito",
+  "CARTEIRA DIGITAL": "Carteira digital (Pix)",
+  "CARTAO MESA": "Cartão Mesa",
+  "PRESENCA PREMIADA": "Presença Premiada"
+};
+function rmxNomeClasse(c) {
+  return RMX_SETOR_CLASSE[c] || (c ? c.charAt(0) + c.slice(1).toLowerCase() : "Sem classificação");
+}
+function rmxNomeSetor(k) {
+  return RMX_SETOR_EQUIPE[k] || k || "Sem setor";
+}
+function rmxNomePagamento(n) {
+  return RMX_PAGAMENTO[n] || (n ? n.charAt(0) + n.slice(1).toLowerCase() : "—");
+}
+function rmxMesTexto(m) {
+  const p = m.split("-").map(Number);
+  return RMX_MESES[p[1] - 1] + " de " + p[0];
+}
+function rmxMesTitulo(m) {
+  const t = rmxMesTexto(m);
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function rmxMesSoma(m, n) {
+  const p = m.split("-").map(Number);
+  const d = new Date(Date.UTC(p[0], p[1] - 1 + n, 1));
+  return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0");
+}
+function rmxIni(m) {
+  return m + "-01";
+}
+function rmxFim(m) {
+  const p = m.split("-").map(Number);
+  return m + "-" + String(new Date(Date.UTC(p[0], p[1], 0)).getUTCDate()).padStart(2, "0");
+}
+function rmxDiasMes(m) {
+  const p = m.split("-").map(Number);
+  return new Date(Date.UTC(p[0], p[1], 0)).getUTCDate();
+}
+function rmxVar(a, b) {
+  return b > 0 ? (a - b) / b * 100 : null;
+}
+function rmxEsc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+function rmxNum(n, casas) {
+  return Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: casas || 0, maximumFractionDigits: casas || 0 });
+}
+function rmxPct(n, casas) {
+  return n == null || !isFinite(n) ? "—" : Number(n).toLocaleString("pt-BR", { minimumFractionDigits: casas == null ? 1 : casas, maximumFractionDigits: casas == null ? 1 : casas }) + "%";
+}
+function rmxBRL(n, casas) {
+  return "R$ " + rmxNum(n, casas);
+}
+function rmxCurto(n) {
+  n = Number(n || 0);
+  if (Math.abs(n) >= 1e6) return "R$ " + (n / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + " mi";
+  if (Math.abs(n) >= 1e3) return "R$ " + (n / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mil";
+  return rmxBRL(n);
+}
+function rmxEquipe(d) {
+  const fimM = rmxFim(d.mes);
+  const noMes = /* @__PURE__ */ new Set(), noProx = /* @__PURE__ */ new Set();
+  let faltas = 0, atestados = 0;
+  d.escala.forEach((r) => {
+    if (!r.colaborador_loja_id) return;
+    if (r.data <= fimM) {
+      noMes.add(r.colaborador_loja_id);
+      if (r.tipo === "falta") faltas++;
+      if (r.tipo === "atestado") atestados++;
+    } else noProx.add(r.colaborador_loja_id);
+  });
+  const porId = {};
+  d.colabs.forEach((c) => {
+    porId[c.id] = c;
+  });
+  const temProx = noProx.size > 0;
+  const saiu = temProx ? Array.from(noMes).filter((id) => !noProx.has(id)).map((id) => porId[id]).filter(Boolean) : [];
+  const entrou = temProx ? Array.from(noProx).filter((id) => !noMes.has(id)).map((id) => porId[id]).filter(Boolean) : [];
+  const inicio = noMes.size, fim = temProx ? noProx.size : null;
+  const media = temProx && fim != null ? (inicio + fim) / 2 : inicio;
+  const turnover = temProx && media ? (entrou.length + saiu.length) / 2 / media * 100 : null;
+  const desligamento = temProx && media ? saiu.length / media * 100 : null;
+  const confirmados = saiu.filter((c) => c.ativo === false).length;
+  const ordenar = (a, b) => rmxNomeSetor(a.setor).localeCompare(rmxNomeSetor(b.setor)) || String(a.nome).localeCompare(String(b.nome));
+  saiu.sort(ordenar);
+  entrou.sort(ordenar);
+  const saidasSetor = {};
+  saiu.forEach((c) => {
+    const n = rmxNomeSetor(c.setor);
+    saidasSetor[n] = (saidasSetor[n] || 0) + 1;
+  });
+  return { temProx, inicio, fim, media, saiu, entrou, turnover, desligamento, confirmados, faltas, atestados, saidasSetor };
+}
+function rmxCalcular(d) {
+  const g = (t) => d.arq[t] ? d.arq[t].dados : null;
+  const metas = g("metas"), pdv = g("pdv"), hora = g("hora"), pag = g("pagamento");
+  const vendaUlva = d.setores.reduce((a, s) => a + Number(s.venda || 0), 0);
+  const vendaUlvaAnt = d.setores.reduce((a, s) => a + Number(s.venda_ant || 0), 0);
+  const pagTotal = pag ? pag.formas.reduce((a, f) => a + Number(f.total), 0) : 0;
+  const venda = metas ? metas.total.venda : pagTotal || vendaUlva;
+  const meta = metas ? metas.total.meta : null;
+  const clientes = hora ? hora.horas.reduce((a, h) => a + Number(h.clientes), 0) : pdv ? pdv.pdvs.reduce((a, p) => a + Number(p.clientes), 0) : null;
+  const ticket = clientes ? (pagTotal || venda) / clientes : null;
+  const perdaTotal = d.perdas.reduce((a, p) => a + Number(p.valor_perdido || 0), 0);
+  const vendaPorClasse = {};
+  d.setores.forEach((s) => {
+    vendaPorClasse[s.chave] = Number(s.venda || 0);
+  });
+  const porSetorPerda = {};
+  d.perdas.forEach((p) => {
+    const k = p.setor || "outros";
+    const s = porSetorPerda[k] = porSetorPerda[k] || { setor: k, perda: 0, itens: 0 };
+    s.perda += Number(p.valor_perdido || 0);
+    s.itens++;
+  });
+  const quebraSetores = Object.keys(porSetorPerda).map((k) => {
+    const s = porSetorPerda[k];
+    const vendaSetor = (RMX_VENDA_SETOR_PERDAS[s.setor] || []).reduce((a, c) => a + (vendaPorClasse[c] || 0), 0);
+    return Object.assign(s, { nome: rmxNomeSetor(s.setor), venda: vendaSetor, pct: vendaSetor > 0 ? s.perda / vendaSetor * 100 : null });
+  }).sort((a, b) => b.perda - a.perda);
+  const porProd = {};
+  d.perdas.forEach((p) => {
+    const k = p.produto_cod || p.produto;
+    const x = porProd[k] = porProd[k] || { produto: p.produto, setor: p.setor, perda: 0, qtd: 0, un: p.unidade };
+    x.perda += Number(p.valor_perdido || 0);
+    x.qtd += Number(p.quantidade || 0);
+  });
+  const topPerdas = Object.keys(porProd).map((k) => porProd[k]).sort((a, b) => b.perda - a.perda).slice(0, 10);
+  const vendidos = d.produtos.filter((p) => Number(p.venda) > 0).sort((a, b) => Number(b.venda) - Number(a.venda));
+  const totalProdutos = d.produtos.reduce((a, p) => a + Number(p.venda || 0), 0);
+  return {
+    metas,
+    pdv,
+    hora,
+    pag,
+    venda,
+    meta,
+    vendaUlva,
+    vendaUlvaAnt,
+    clientes,
+    ticket,
+    pagTotal,
+    perdaTotal,
+    quebraSetores,
+    topPerdas,
+    topProdutos: vendidos.slice(0, 15),
+    totalProdutos,
+    equipe: rmxEquipe(d)
+  };
+}
+const RMX_LOGO = '<svg width="34" height="34" viewBox="0 0 160 160"><rect width="160" height="160" rx="36" fill="#0E1B2C"/><path d="M42 36 V84 A38 38 0 0 0 118 84 V36" fill="none" stroke="#F4F5F7" stroke-width="20" stroke-linecap="round"/><circle cx="80" cy="74" r="15" fill="#2F7BFF"/></svg>';
+function rmxSeloMeta(p) {
+  if (p == null) return "";
+  return p >= 100 ? '<span class="st bom">✓ ' + rmxPct(p) + "</span>" : '<span class="st ' + (p >= 95 ? "at" : "ruim") + '">▼ ' + rmxPct(p) + "</span>";
+}
+function rmxSeloQuebra(p) {
+  if (p == null) return "";
+  const c = p >= 3 ? "ruim" : p >= 1 ? "at" : "bom";
+  return '<span class="st ' + c + '">' + (c === "bom" ? "✓ " : "▲ ") + rmxPct(p, 2) + "</span>";
+}
+function rmxLinha(nome, sub, pct, valor, valorSub, extra, fraca) {
+  return '<div class="ln"><div class="ln-t"><div class="nm">' + nome + (sub ? "<small>" + sub + "</small>" : "") + '</div><div class="vl">' + valor + (valorSub ? "<small>" + valorSub + "</small>" : "") + '</div></div><div class="tr"><div class="br' + (fraca ? " fr" : "") + '" style="width:' + Math.max(0.5, Math.min(100, pct)).toFixed(1) + '%"></div>' + (extra || "") + "</div></div>";
+}
+function rmxDocumentoHtml(d, opcoes) {
+  const c = rmxCalcular(d), e = c.equipe;
+  const paraPdf = !!(opcoes && opcoes.paraPdf);
+  const loja = opcoes && opcoes.loja || "Loja 327 · Itatiaiuçu";
+  const mesNome = RMX_MESES[Number(d.mes.slice(5)) - 1], proxNome = RMX_MESES[Number(d.prox.slice(5)) - 1];
+  const vazio = (t) => '<div class="vz">' + t + "</div>";
+  const card = (titulo, sub, corpo) => '<section class="cd"><h2>' + titulo + "</h2>" + (sub ? '<div class="sb">' + sub + "</div>" : "") + corpo + "</section>";
+  const dica = (t) => '<div class="in">' + t + "</div>";
+  const ating = c.meta ? c.venda / c.meta * 100 : null;
+  const varMes = rmxVar(c.vendaUlva, c.vendaUlvaAnt);
+  const k = (r, v, l) => '<div class="kp"><div class="r">' + r + '</div><div class="v">' + v + '</div><div class="l">' + l + "</div></div>";
+  const kpis = '<div class="kps">' + k("Venda do mês", rmxCurto(c.venda), varMes != null ? '<b class="' + (varMes >= 0 ? "up" : "dn") + '">' + (varMes >= 0 ? "▲ +" : "▼ ") + rmxPct(varMes) + "</b> vs mês anterior" : rmxBRL(c.venda)) + k("Meta", ating != null ? rmxPct(ating) : "—", c.meta ? c.venda >= c.meta ? '<span class="st bom">✓ Batida</span> +' + rmxBRL(c.venda - c.meta) : '<span class="st ' + ((ating || 0) >= 95 ? "at" : "ruim") + '">▼ Abaixo</span> faltaram ' + rmxBRL(c.meta - c.venda) : "sem PDF de metas") + k("Clientes", c.clientes ? rmxNum(c.clientes) : "—", c.clientes ? rmxNum(c.clientes / rmxDiasMes(d.mes)) + " por dia, em média" : "sem venda por hora") + k("Ticket médio", c.ticket ? rmxBRL(c.ticket, 2) : "—", "venda ÷ clientes") + k("Quebras", d.perdas.length ? rmxCurto(c.perdaTotal) : "—", d.perdas.length && c.vendaUlva ? rmxPct(c.perdaTotal / c.vendaUlva * 100, 2) + " da venda" : "sem quebras no mês") + k("Turnover", e.turnover != null ? rmxPct(e.turnover) : "—", e.temProx ? e.entrou.length + " entradas · " + e.saiu.length + " saídas" : "falta a escala de " + proxNome) + "</div>";
+  let blocoMetas;
+  if (!c.metas) blocoMetas = card("Meta × realizado por setor", "", vazio("Suba o PDF “Meta Venda Loja” do mês no portal (Relatório mensal → Subir arquivos do mês)."));
+  else {
+    const margem = {};
+    d.setores.forEach((s) => {
+      margem[s.chave] = s.margem != null ? Number(s.margem) : null;
+    });
+    const linhas = c.metas.setores.filter((s) => s.meta > 0 || s.venda > 0).map((s) => Object.assign({}, s, { pct: s.meta > 0 ? s.venda / s.meta * 100 : null })).sort((a, b) => b.venda - a.venda);
+    const max = Math.max.apply(null, linhas.map((s) => Math.max(s.venda, s.meta)).concat([1]));
+    const bateram = linhas.filter((s) => s.pct != null && s.pct >= 100);
+    const corpo = linhas.map((s) => {
+      const mr = margem[s.nome];
+      return rmxLinha(
+        rmxEsc(rmxNomeClasse(s.nome)),
+        mr != null && s.margem_obj > 0 ? "margem " + rmxPct(mr) + " · obj. " + rmxPct(s.margem_obj, 0) : "",
+        s.venda / max * 100,
+        "<b>" + rmxBRL(s.venda) + "</b> " + rmxSeloMeta(s.pct),
+        s.meta > 0 ? "meta " + rmxBRL(s.meta) + " · " + (s.venda >= s.meta ? "+" : "−") + rmxBRL(Math.abs(s.venda - s.meta)) : "",
+        s.meta > 0 ? '<div class="mk" style="left:' + (s.meta / max * 100).toFixed(1) + '%"></div>' : "",
+        s.pct != null && s.pct < 100
+      );
+    }).join("");
+    const melhores = bateram.slice().sort((a, b) => b.venda - b.meta - (a.venda - a.meta)).slice(0, 2);
+    const piores = linhas.filter((s) => s.pct != null && s.pct < 100).sort((a, b) => a.venda - a.meta - (b.venda - b.meta)).slice(0, 2);
+    const txt = (melhores.length ? "Mais acima da meta: " + melhores.map((s) => "<b>" + rmxEsc(rmxNomeClasse(s.nome)) + "</b> (+" + rmxBRL(s.venda - s.meta) + ")").join(" e ") + ". " : "") + (piores.length ? "Mais abaixo: " + piores.map((s) => "<b>" + rmxEsc(rmxNomeClasse(s.nome)) + "</b> (−" + rmxBRL(s.meta - s.venda) + ")").join(" e ") + "." : "");
+    blocoMetas = card("Meta × realizado por setor", bateram.length + " de " + linhas.filter((s) => s.meta > 0).length + " setores bateram a meta. Barra = venda · tracinho = meta · barra clara = abaixo.", corpo + (txt ? dica(txt) : ""));
+  }
+  let blocoHora;
+  if (!c.hora) blocoHora = card("Vendas por hora", "", vazio("Suba a planilha de venda por hora no portal."));
+  else {
+    const horas = c.hora.horas.filter((h) => Number(h.total) > 1e3 || Number(h.clientes) > 20);
+    const max = Math.max.apply(null, horas.map((h) => Number(h.total)).concat([1]));
+    const pico = horas.reduce((a, h) => Number(h.total) > Number(a.total) ? h : a, horas[0]);
+    const picoCli = horas.reduce((a, h) => Number(h.clientes) > Number(a.clientes) ? h : a, horas[0]);
+    const meio = horas.filter((h) => h.hora >= "10:00" && h.hora <= "17:00");
+    const vale = meio.length ? meio.reduce((a, h) => Number(h.total) < Number(a.total) ? h : a, meio[0]) : null;
+    const corpo = horas.map((h) => {
+      const t = Number(h.total), cl = Number(h.clientes);
+      return '<div class="hr' + (h === pico ? " pk" : "") + '"><span class="hh">' + String(h.hora).slice(0, 2) + 'h</span><div class="tr"><div class="br" style="width:' + (t / max * 100).toFixed(1) + '%"></div></div><span class="hv"><b>' + rmxCurto(t) + "</b><small>" + rmxNum(cl) + " cli · " + rmxBRL(cl ? t / cl : 0, 0) + "</small></span></div>";
+    }).join("");
+    blocoHora = card("Vendas por hora", "Soma do mês em cada faixa de horário, com clientes e ticket.", corpo + dica("Pico às <b>" + String(pico.hora).slice(0, 2) + "h</b>" + (picoCli !== pico ? "; mais clientes às <b>" + String(picoCli.hora).slice(0, 2) + "h</b>" : " (também o maior fluxo de clientes)") + "." + (vale ? " Vale do dia às <b>" + String(vale.hora).slice(0, 2) + "h</b> — bom para reposição e intervalos." : "")));
+  }
+  let blocoPag;
+  if (!c.pag) blocoPag = card("Formas de pagamento", "", vazio("Suba a planilha de venda por finalizadora no portal."));
+  else {
+    const total = c.pagTotal || 1;
+    const formas = c.pag.formas.slice().sort((a, b) => b.total - a.total);
+    const max = formas.length ? formas[0].total : 1;
+    const corpo = formas.map((f) => rmxLinha(
+      rmxEsc(rmxNomePagamento(f.nome)),
+      rmxNum(f.qtd) + " pagamentos · média " + rmxBRL(f.qtd ? f.total / f.qtd : 0, 2),
+      f.total / max * 100,
+      "<b>" + rmxPct(f.total / total * 100) + "</b>",
+      rmxBRL(f.total)
+    )).join("");
+    const cartao = formas.filter((f) => /CARTAO (CREDITO|DEBITO)/.test(f.nome)).reduce((a, f) => a + f.total, 0);
+    blocoPag = card("Formas de pagamento", "Participação no valor recebido.", corpo + dica("<b>" + rmxEsc(rmxNomePagamento(formas[0].nome)) + "</b> lidera com " + rmxPct(formas[0].total / total * 100) + ". Crédito + débito: <b>" + rmxPct(cartao / total * 100) + "</b>."));
+  }
+  let blocoPdv;
+  if (!c.pdv) blocoPdv = card("Venda por PDV", "", vazio("Suba a planilha de venda por PDV no portal."));
+  else {
+    const lista = c.pdv.pdvs.slice().sort((a, b) => b.total - a.total);
+    const max = lista.length ? lista[0].total : 1;
+    const tv = lista.reduce((a, p) => a + p.total, 0), tc = lista.reduce((a, p) => a + p.clientes, 0);
+    const tg = tc ? tv / tc : 0;
+    const linhas = lista.map((p, i) => {
+      const tk = p.clientes ? p.total / p.clientes : 0;
+      return '<tr><td class="ps">' + (i + 1) + "</td><td><b>PDV " + p.pdv + '</b><div class="mi"><div style="width:' + (p.total / max * 100).toFixed(1) + '%"></div></div></td><td class="n"><b>' + rmxBRL(p.total) + "</b><small>" + rmxPct(p.total / tv * 100) + '</small></td><td class="n">' + rmxNum(p.clientes) + '</td><td class="n">' + rmxBRL(tk, 2) + (tk < tg * 0.7 ? "<small>compra rápida</small>" : "") + "</td></tr>";
+    }).join("");
+    const maisCli = lista.slice().sort((a, b) => b.clientes - a.clientes)[0];
+    blocoPdv = card(
+      "Venda por PDV",
+      "Ranking dos caixas. Ticket bem abaixo da média = caixa rápido/preferencial.",
+      '<table><thead><tr><th></th><th>Caixa</th><th class="n">Venda</th><th class="n">Clientes</th><th class="n">Ticket</th></tr></thead><tbody>' + linhas + "</tbody></table>" + dica("Maior venda: <b>PDV " + lista[0].pdv + "</b>. Mais clientes: <b>PDV " + maisCli.pdv + "</b> (" + rmxNum(maisCli.clientes) + "). Menor movimento: <b>PDV " + lista[lista.length - 1].pdv + "</b>.")
+    );
+  }
+  let blocoProd;
+  if (!c.topProdutos.length) blocoProd = card("Produtos mais vendidos", "", vazio("Sem vendas do mês no ULVA (Importar vendas do Falcon)."));
+  else {
+    const max = Number(c.topProdutos[0].venda);
+    const soma = c.topProdutos.reduce((a, p) => a + Number(p.venda), 0);
+    const linhas = c.topProdutos.map((p, i) => {
+      const v = rmxVar(Number(p.venda), Number(p.venda_ant));
+      return '<tr><td class="ps">' + (i + 1) + "</td><td><b>" + rmxEsc(p.nome) + "</b><small>cód. " + rmxEsc(p.chave) + (p.margem != null ? " · margem " + rmxPct(Number(p.margem)) : "") + '</small><div class="mi"><div style="width:' + (Number(p.venda) / max * 100).toFixed(1) + '%"></div></div></td><td class="n"><b>' + rmxBRL(p.venda) + '</b><small class="' + (v == null ? "" : v >= 0 ? "up" : "dn") + '">' + (v == null ? "novo" : (v >= 0 ? "▲ +" : "▼ ") + rmxPct(v)) + "</small></td></tr>";
+    }).join("");
+    blocoProd = card(
+      "Produtos mais vendidos",
+      "Top 15 em valor, com variação contra o mês anterior. Somam " + rmxPct(c.totalProdutos ? soma / c.totalProdutos * 100 : null) + " da venda.",
+      '<table><thead><tr><th></th><th>Produto</th><th class="n">Venda</th></tr></thead><tbody>' + linhas + "</tbody></table>"
+    );
+  }
+  let blocoQuebra;
+  if (!d.perdas.length) blocoQuebra = card("Quebras do mês", "", vazio("Ainda não há perdas importadas para este mês."));
+  else {
+    const max = c.quebraSetores.length ? c.quebraSetores[0].perda : 1;
+    const setores = c.quebraSetores.map((s) => rmxLinha(rmxEsc(s.nome), s.itens + " produtos", s.perda / max * 100, "<b>" + rmxBRL(s.perda) + "</b> " + rmxSeloQuebra(s.pct), s.venda ? "sobre " + rmxBRL(s.venda) + " vendidos" : "")).join("");
+    const prods = c.topPerdas.map((p, i) => '<tr><td class="ps">' + (i + 1) + "</td><td><b>" + rmxEsc(p.produto) + "</b><small>" + rmxEsc(rmxNomeSetor(p.setor)) + " · " + rmxNum(p.qtd, p.un && /kg/i.test(p.un) ? 1 : 0) + " " + rmxEsc(String(p.un || "").toLowerCase()) + '</small></td><td class="n"><b>' + rmxBRL(p.perda, 2) + "</b></td></tr>").join("");
+    const pior = c.quebraSetores[0];
+    blocoQuebra = card("Quebras do mês", "Total de " + rmxBRL(c.perdaTotal, 2) + ". Selo = quebra % (verde até 1%, laranja até 3%, vermelho acima).", setores + dica("<b>" + rmxEsc(pior.nome) + "</b> concentra " + rmxPct(c.perdaTotal ? pior.perda / c.perdaTotal * 100 : null) + " da quebra da loja.") + "<h3>Produtos que mais perderam</h3><table><tbody>" + prods + "</tbody></table>");
+  }
+  let blocoEquipe;
+  if (!e.inicio) blocoEquipe = card("Equipe e turnover", "", vazio("Não há escala de folgas deste mês no ULVA."));
+  else {
+    const sal = d.salario;
+    const q = (r, v, l) => '<div class="eq"><div class="r">' + r + '</div><div class="v">' + v + '</div><div class="l">' + l + "</div></div>";
+    const dias = e.faltas + e.atestados;
+    const quadro = e.fim != null ? e.fim : e.inicio;
+    const nomes = (arr) => arr.map((x) => rmxEsc(x.nome) + " <span>(" + rmxEsc(rmxNomeSetor(x.setor)) + ")</span>").join(", ");
+    const porSetor = Object.keys(e.saidasSetor).map((n) => [n, e.saidasSetor[n]]).sort((a, b) => b[1] - a[1]);
+    blocoEquipe = card(
+      "Equipe e turnover",
+      "Escala de folgas/DSR de " + mesNome + " comparada com a de " + proxNome + ": quem sai da escala conta como saída; quem aparece só em " + proxNome + ", como entrada.",
+      '<div class="eqs">' + q("Escala de " + mesNome, rmxNum(e.inicio), "colaboradores") + (e.temProx ? q("Escala de " + proxNome, rmxNum(e.fim), (e.fim - e.inicio >= 0 ? "+" : "") + (e.fim - e.inicio) + " no quadro") + q("Entradas", rmxNum(e.entrou.length), "novos na escala") + q("Saídas", rmxNum(e.saiu.length), e.confirmados + " inativos no cadastro") + q("Turnover", rmxPct(e.turnover), "(entradas + saídas) ÷ 2 ÷ quadro médio") + q("Desligamento", rmxPct(e.desligamento), "saídas ÷ quadro médio") : q("Turnover", "—", "falta a escala de " + proxNome)) + q("Folha estimada", rmxCurto(quadro * sal), quadro + " × " + rmxBRL(sal)) + (e.temProx ? q("Custo do turnover", rmxCurto(e.saiu.length * sal), "≈ 1 salário por desligamento") : "") + q("Faltas · atestados", rmxNum(e.faltas) + " · " + rmxNum(e.atestados), dias + " dias ≈ " + rmxBRL(dias * sal / 30)) + "</div>" + (porSetor.length ? dica("Saídas por setor: " + porSetor.map((x) => "<b>" + rmxEsc(x[0]) + "</b> " + x[1]).join(" · ") + ".") : "") + (e.saiu.length ? '<p class="nm-l"><b>Saíram:</b> ' + nomes(e.saiu) + "</p>" : "") + (e.entrou.length ? '<p class="nm-l"><b>Entraram:</b> ' + nomes(e.entrou) + "</p>" : "")
+    );
+  }
+  const css = `
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{font-family:-apple-system,'Segoe UI',Roboto,Arial,Helvetica,sans-serif;color:#0E1B2C;background:${paraPdf ? "#fff" : "#F3F5F8"};font-size:13px;-webkit-text-size-adjust:100%}
+.pg{max-width:880px;margin:0 auto;padding:${paraPdf ? "0" : "14px 12px 40px"}}
+.tp{display:flex;align-items:center;gap:12px;border-bottom:3px solid #0E1B2C;padding-bottom:10px;margin-bottom:14px}
+.tp h1{font-size:19px;margin:0;line-height:1.15}.tp .s{color:#5B6577;font-size:11.5px;margin-top:3px}
+.kps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+@media (min-width:600px){.kps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.kp,.cd{background:#fff;border:1px solid #DDE3EC;border-radius:12px}
+.kp{padding:10px 12px}.kp .r{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7D8898}
+.kp .v{font-size:21px;font-weight:800;margin:4px 0 3px;white-space:nowrap}.kp .l{font-size:10.5px;color:#4F5B6B;line-height:1.35}
+.cd{padding:12px 13px;margin-bottom:12px}.cd h2{break-after:avoid;page-break-after:avoid}.ln,.hr,tr,.eq,.kp,.in,.nm-l{break-inside:avoid;page-break-inside:avoid}
+.duas{display:grid;grid-template-columns:minmax(0,1fr);gap:0 12px}@media (min-width:700px){.duas{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.cd h2{font-size:15px;margin:0 0 2px}.cd h3{font-size:12.5px;margin:12px 0 2px}.sb{font-size:11px;color:#4F5B6B;margin-bottom:8px;line-height:1.4}
+.ln{padding:6px 0;border-bottom:1px solid #EEF1F5}.ln:last-of-type{border-bottom:0}
+.ln-t{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:4px}
+.nm{font-weight:700;font-size:12.5px;line-height:1.25}.nm small,.vl small,td small{display:block;font-weight:500;font-size:10px;color:#7D8898;margin-top:1px}
+.vl{text-align:right;white-space:nowrap;font-size:12.5px}
+.tr{position:relative;height:8px;background:#EEF2F7;border-radius:4px}.br{height:100%;background:#2F7BFF;border-radius:4px}.br.fr{background:#9DBFFF}
+.mk{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:#0E1B2C;border-radius:1px}
+.st{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;white-space:nowrap}
+.st.bom{background:#E3F5EC;color:#1E8E5A}.st.at{background:#FFF1DB;color:#A86200}.st.ruim{background:#FDE8E6;color:#D23C33}
+.up{color:#1E8E5A!important;font-weight:800}.dn{color:#D23C33!important;font-weight:800}
+.in{background:#E8F0FF;border-radius:9px;padding:8px 10px;font-size:11.5px;line-height:1.45;margin-top:8px}
+.vz{font-size:12px;color:#7D8898;padding:6px 0}
+.hr{display:grid;grid-template-columns:30px 1fr 112px;gap:8px;align-items:center;padding:3px 0}
+.hr .hh{font-size:11px;color:#7D8898;font-weight:700}.hr .hv{text-align:right;font-size:11.5px;white-space:nowrap}.hr .hv small{display:block;font-size:9.5px;color:#7D8898}
+.hr .br{background:#9DBFFF}.hr.pk .br{background:#2F7BFF}.hr.pk .hh{color:#0E1B2C}
+table{width:100%;border-collapse:collapse}th{text-align:left;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#7D8898;padding:4px 5px;border-bottom:1px solid #DDE3EC}
+td{padding:6px 5px;border-bottom:1px solid #EEF1F5;font-size:12px;vertical-align:top}tr:last-child td{border-bottom:0}
+.n{text-align:right;white-space:nowrap}.ps{color:#7D8898;font-weight:800;width:20px}
+.mi{height:4px;background:#EEF2F7;border-radius:2px;margin-top:4px}.mi div{height:100%;background:#2F7BFF;border-radius:2px}
+.eqs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}@media (min-width:600px){.eqs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.eq{background:#F7F9FC;border:1px solid #DDE3EC;border-radius:9px;padding:8px 10px}.eq .r{font-size:9.5px;font-weight:800;color:#7D8898;text-transform:uppercase;letter-spacing:.05em}
+.eq .v{font-size:18px;font-weight:800;margin-top:2px}.eq .l{font-size:10px;color:#4F5B6B;margin-top:1px}
+.nm-l{font-size:11.5px;line-height:1.55;margin:8px 0 0}.nm-l span{color:#7D8898}
+.rd{font-size:9.5px;color:#7D8898;border-top:1px solid #DDE3EC;padding-top:6px;margin-top:4px;line-height:1.45}
+@page{size:A4;margin:9mm}
+@media print{body{background:#fff}.pg{padding:0}.duas{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.kps{grid-template-columns:repeat(3,minmax(0,1fr))}.eqs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+`;
+  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Relatório mensal — ' + rmxMesTitulo(d.mes) + "</title><style>" + css + '</style></head><body><div class="pg"><div class="tp">' + RMX_LOGO + "<div><h1>Relatório mensal — " + rmxMesTitulo(d.mes) + '</h1><div class="s">' + rmxEsc(loja) + " · gerado em " + (/* @__PURE__ */ new Date()).toLocaleString("pt-BR") + "</div></div></div>" + kpis + blocoMetas + '<div class="duas">' + blocoHora + blocoPag + '</div><div class="duas">' + blocoPdv + blocoProd + "</div>" + blocoQuebra + blocoEquipe + '<div class="rd">Venda, meta e % por setor: PDF “Meta Venda Loja”. Clientes e ticket: venda por hora (1 cupom = 1 cliente). Produtos, margem e comparação com o mês anterior: vendas do Falcon no ULVA. Quebra % = perda do setor ÷ venda do setor. Custos de equipe estimados com salário médio de ' + rmxBRL(d.salario) + ".</div></div></body></html>";
+}
+
+// =============================================================================
 // Relatório mensal — dashboard do mês inteiro numa página só.
 // Fontes:
 //  • relatorio_mensal_dados (sobe aqui mesmo, 1x por mês): PDF "Meta Venda
@@ -11669,72 +12048,9 @@ function rmMudarMes(n) {
   paginaRelatorioMensal();
 }
 
-// ---------- cálculos ----------
-function rmCalcular() {
-  const d = estado.rmDados;
-  const g = (t) => (d.arq[t] ? d.arq[t].dados : null);
-  const metas = g('metas'), pdv = g('pdv'), hora = g('hora'), pag = g('pagamento');
-  const vendaUlva = d.setores.reduce((a, s) => a + Number(s.venda || 0), 0);
-  const vendaUlvaAnt = d.setores.reduce((a, s) => a + Number(s.venda_ant || 0), 0);
-  const pagTotal = pag ? pag.formas.reduce((a, f) => a + Number(f.total), 0) : 0;
-  const venda = metas ? metas.total.venda : (pagTotal || vendaUlva);
-  const meta = metas ? metas.total.meta : null;
-  const clientes = hora ? hora.horas.reduce((a, h) => a + Number(h.clientes), 0) : (pdv ? pdv.pdvs.reduce((a, p) => a + Number(p.clientes), 0) : null);
-  const ticket = clientes ? (pagTotal || venda) / clientes : null;
-  // quebras
-  const perdaTotal = d.perdas.reduce((a, p) => a + Number(p.valor_perdido || 0), 0);
-  const vendaPorClasse = {};
-  d.setores.forEach((s) => { vendaPorClasse[s.chave] = Number(s.venda || 0); });
-  const porSetorPerda = {};
-  d.perdas.forEach((p) => {
-    const k = p.setor || 'outros';
-    const s = porSetorPerda[k] = porSetorPerda[k] || { setor: k, perda: 0, itens: 0 };
-    s.perda += Number(p.valor_perdido || 0); s.itens++;
-  });
-  const quebraSetores = Object.values(porSetorPerda).map((s) => {
-    const classes = VENDA_SETOR_PERDAS[s.setor] || [];
-    const vendaSetor = classes.reduce((a, c) => a + (vendaPorClasse[c] || 0), 0);
-    return Object.assign(s, { nome: nomeSetor(s.setor), venda: vendaSetor, pct: vendaSetor > 0 ? (s.perda / vendaSetor) * 100 : null });
-  }).sort((a, b) => b.perda - a.perda);
-  const porProdPerda = {};
-  d.perdas.forEach((p) => {
-    const k = p.produto_cod || p.produto;
-    const x = porProdPerda[k] = porProdPerda[k] || { produto: p.produto, setor: p.setor, perda: 0, qtd: 0, un: p.unidade };
-    x.perda += Number(p.valor_perdido || 0); x.qtd += Number(p.quantidade || 0);
-  });
-  const topPerdas = Object.values(porProdPerda).sort((a, b) => b.perda - a.perda).slice(0, 10);
-  return { metas, pdv, hora, pag, venda, meta, vendaUlva, vendaUlvaAnt, clientes, ticket, pagTotal, perdaTotal, quebraSetores, topPerdas, equipe: rmEquipe() };
-}
-
-function rmEquipe() {
-  const d = estado.rmDados, m = d.mes;
-  const fimM = rmFim(m);
-  const noMes = new Set(), noProx = new Set();
-  let faltas = 0, atestados = 0;
-  d.escala.forEach((r) => {
-    if (!r.colaborador_loja_id) return;
-    if (r.data <= fimM) {
-      noMes.add(r.colaborador_loja_id);
-      if (r.tipo === 'falta') faltas++;
-      if (r.tipo === 'atestado') atestados++;
-    } else noProx.add(r.colaborador_loja_id);
-  });
-  const porId = {};
-  d.colabs.forEach((c) => { porId[c.id] = c; });
-  const temProx = noProx.size > 0;
-  const saiu = temProx ? [...noMes].filter((id) => !noProx.has(id)).map((id) => porId[id]).filter(Boolean) : [];
-  const entrou = temProx ? [...noProx].filter((id) => !noMes.has(id)).map((id) => porId[id]).filter(Boolean) : [];
-  const inicio = noMes.size, fim = temProx ? noProx.size : null;
-  const media = temProx ? (inicio + fim) / 2 : inicio;
-  const turnover = temProx && media ? (((entrou.length + saiu.length) / 2) / media) * 100 : null;
-  const desligamento = temProx && media ? (saiu.length / media) * 100 : null;
-  const confirmados = saiu.filter((c) => c.ativo === false).length;
-  const ordenar = (a, b) => nomeSetor(a.setor).localeCompare(nomeSetor(b.setor)) || a.nome.localeCompare(b.nome);
-  saiu.sort(ordenar); entrou.sort(ordenar);
-  const saidasSetor = {};
-  saiu.forEach((c) => { const n = nomeSetor(c.setor); saidasSetor[n] = (saidasSetor[n] || 0) + 1; });
-  return { temProx, inicio, fim, media, saiu, entrou, turnover, desligamento, confirmados, faltas, atestados, saidasSetor };
-}
+// ---------- cálculos (do gerador compartilhado com o app) ----------
+function rmCalcular() { return rmxCalcular(estado.rmDados); }
+function rmEquipe() { return rmxEquipe(estado.rmDados); }
 
 // ---------- desenho ----------
 function rmStatusMeta(pct) {
@@ -11770,7 +12086,7 @@ function renderizarRelatorioMensal() {
       '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
         '<button class="btn-acao" onclick="document.getElementById(\'rm-arquivos\').click()">📤 Subir arquivos do mês</button>' +
-        '<button class="btn-acao secundario" onclick="window.print()">🖨️ Imprimir / PDF</button>' +
+        '<button class="btn-acao secundario" id="rm-btn-pdf" onclick="rmGerarPdf()">📄 Exportar PDF</button>' +
         '<input type="file" id="rm-arquivos" multiple accept=".pdf,.xlsx,.xls,.csv" style="display:none" onchange="rmImportar(this)">' +
       '</div>' +
     '</div>';
@@ -11966,6 +12282,98 @@ async function rmSalvarSalario(v) {
   estado.rmDados.salario = n;
   renderizarRelatorioMensal();
   mostrarToast('Salário médio atualizado.');
+}
+
+// ---------- Exportar PDF (para mandar no WhatsApp) ----------
+// Monta o mesmo HTML do PDF do app (rmxDocumentoHtml) num iframe escondido do
+// tamanho de uma folha A4, tira a "foto" com html2canvas e corta em páginas
+// sem partir linha no meio. No celular abre a tela de compartilhar
+// (WhatsApp); no computador baixa o arquivo.
+function rmCarregarScript(url) {
+  return new Promise((ok, falha) => {
+    if (document.querySelector('script[src="' + url + '"]')) return ok();
+    const s = document.createElement('script');
+    s.src = url; s.onload = () => ok(); s.onerror = () => falha(new Error('não consegui baixar ' + url));
+    document.head.appendChild(s);
+  });
+}
+async function rmGerarPdf() {
+  const d = estado.rmDados;
+  if (!d) return;
+  const btn = document.getElementById('rm-btn-pdf');
+  if (btn) { btn.disabled = true; btn.textContent = 'Gerando PDF…'; }
+  const iframe = document.createElement('iframe');
+  try {
+    await Promise.all([
+      window.html2canvas ? null : rmCarregarScript('https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'),
+      window.jspdf ? null : rmCarregarScript('https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'),
+    ]);
+    const LARGURA = 794; // A4 a 96 dpi
+    iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + LARGURA + 'px;height:1200px;border:0;';
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument;
+    doc.open(); doc.write(rmxDocumentoHtml(d, { paraPdf: true })); doc.close();
+    doc.body.style.padding = '28px 30px';
+    await new Promise((r) => setTimeout(r, 120));
+    const altura = doc.documentElement.scrollHeight;
+    iframe.style.height = altura + 'px';
+    const escala = 2;
+    const canvas = await window.html2canvas(doc.body, { scale: escala, backgroundColor: '#ffffff', width: LARGURA, windowWidth: LARGURA, height: altura, windowHeight: altura, logging: false });
+    // pontos de corte: nunca no meio de uma linha/cartão pequeno
+    const blocos = [...doc.querySelectorAll('.ln,.hr,tr,.eq,.kp,.in,.nm-l,.sb,h2,h3,.tp,.rd')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { topo: r.top + doc.defaultView.scrollY, fim: r.bottom + doc.defaultView.scrollY, titulo: /^H[23]$/.test(el.tagName) };
+    });
+    const alturaPagina = Math.floor(LARGURA * 297 / 210);
+    const cortes = [0];
+    let inicio = 0;
+    while (altura - inicio > alturaPagina) {
+      let corte = inicio + alturaPagina;
+      for (const b of blocos) {
+        if (b.topo < corte && b.fim > corte && b.topo > inicio + 40) corte = Math.min(corte, b.topo - 4);
+        // título não fica sozinho no pé da página
+        if (b.titulo && b.topo < corte && b.fim > corte - 60 && b.topo > inicio + 40) corte = Math.min(corte, b.topo - 4);
+      }
+      if (corte <= inicio + 40) corte = inicio + alturaPagina;
+      cortes.push(corte);
+      inicio = corte;
+    }
+    cortes.push(altura);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    for (let i = 0; i < cortes.length - 1; i++) {
+      const y0 = cortes[i], y1 = cortes[i + 1];
+      const pedaco = document.createElement('canvas');
+      pedaco.width = canvas.width; pedaco.height = Math.round((y1 - y0) * escala);
+      const ctx = pedaco.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, pedaco.width, pedaco.height);
+      ctx.drawImage(canvas, 0, Math.round(y0 * escala), canvas.width, pedaco.height, 0, 0, canvas.width, pedaco.height);
+      if (i > 0) pdf.addPage();
+      pdf.addImage(pedaco.toDataURL('image/jpeg', 0.9), 'JPEG', 0, 0, 210, (y1 - y0) * 210 / LARGURA);
+    }
+    const nomeMes = RM_MESES[Number(d.mes.slice(5)) - 1];
+    const nomeArquivo = 'relatorio-mensal-' + nomeMes.replace('ç', 'c') + '-' + d.mes.slice(0, 4) + '.pdf';
+    const blob = pdf.output('blob');
+    const arquivo = new File([blob], nomeArquivo, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+      try {
+        await navigator.share({ files: [arquivo], title: 'Relatório mensal — ' + rmMesTitulo(d.mes) });
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return; // fechou a tela de compartilhar
+      }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nomeArquivo;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    mostrarToast('PDF baixado (' + nomeArquivo + '). É só anexar no WhatsApp.');
+  } catch (e) {
+    mostrarToast('Não consegui gerar o PDF: ' + (e.message || e), 'erro');
+  } finally {
+    iframe.remove();
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Exportar PDF'; }
+  }
 }
 
 // ---------- importação dos arquivos do mês ----------
