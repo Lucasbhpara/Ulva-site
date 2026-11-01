@@ -1217,7 +1217,7 @@ async function fazerLogin() {
     document.getElementById('nav-giro-produtos').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-vendas-loja').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-venda-dia').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
-    document.getElementById('nav-relatorio-mensal').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
+    document.getElementById('nav-relatorio-mensal').style.display = String(encontrado.matricula) === MATRICULA_RELATORIO_MENSAL ? '' : 'none';
     document.getElementById('nav-importar-vendas').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-ruptura-mix').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-visitas-site').style.display = String(encontrado.matricula) === '7990353' ? '' : 'none';
@@ -11975,6 +11975,8 @@ td{padding:6px 5px;border-bottom:1px solid #EEF1F5;font-size:12px;vertical-align
 //    mês e não aparece na do mês seguinte saiu; quem aparece só no seguinte
 //    entrou. Faltas/atestados do mês vêm da mesma tabela.
 // =============================================================================
+// Relatório mensal: por enquanto só o Lucas.
+const MATRICULA_RELATORIO_MENSAL = '7990353';
 const RM_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const RM_PAGAMENTO_NOME = {
   'DINHEIRO': 'Dinheiro', 'CARTAO CREDITO': 'Cartão de crédito', 'CARTAO DEBITO': 'Cartão de débito',
@@ -11993,7 +11995,7 @@ function rmBrNum(s) { return Number(String(s).replace(/\./g, '').replace(',', '.
 
 async function paginaRelatorioMensal() {
   const el = document.getElementById('conteudo-principal');
-  if (!estado.usuario || !MATRICULAS_GIRO.includes(String(estado.usuario.matricula))) {
+  if (!estado.usuario || String(estado.usuario.matricula) !== MATRICULA_RELATORIO_MENSAL) {
     el.innerHTML = cabecalho('Relatório mensal', '') + '<div class="celula-vazio">Página ainda não liberada para o seu acesso.</div>';
     return;
   }
