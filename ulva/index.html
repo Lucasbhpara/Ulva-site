@@ -797,6 +797,92 @@
     .hf-tabela tbody td[colspan] { grid-column: 1 / -1; }
   }
   .pq-setor.hf-ativo { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+
+  /* ---------- Relatório mensal ---------- */
+  .rm-fontes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  .rm-fonte { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; padding: 5px 10px; border-radius: var(--radius-full); border: 1px solid var(--border); background: var(--card-bg); color: var(--text-secondary); }
+  .rm-fonte.ok::before { content: '✓'; color: var(--green); font-weight: 900; }
+  .rm-fonte.falta::before { content: '•'; color: var(--orange); font-weight: 900; }
+  .rm-fonte.falta { color: var(--text-muted); }
+  .rm-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .rm-kpi { background: var(--card-bg); border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: var(--radius-lg); padding: 16px 18px; min-width: 0; }
+  .rm-kpi .r { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .rm-kpi .v { font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(20px, 1.75vw, 26px); font-weight: 800; color: var(--navy); line-height: 1.05; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rm-kpi .l { font-size: 12px; color: var(--text-secondary); margin-top: 7px; line-height: 1.35; }
+  .rm-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 1100px) { .rm-grid2 { grid-template-columns: minmax(0, 1fr); } }
+  .rm-card { background: var(--card-bg); border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; min-width: 0; }
+  .rm-grid2 .rm-card { margin-bottom: 0; }
+  .rm-card h2 { font-size: 17px; margin: 0 0 3px; font-weight: 800; }
+  .rm-card .rm-sub { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.45; }
+  .rm-insight { background: var(--accent-soft); color: var(--navy); border-radius: var(--radius-md); padding: 10px 12px; font-size: 12.5px; line-height: 1.45; margin-top: 12px; }
+  .rm-vazio { font-size: 13px; color: var(--text-muted); padding: 18px 0 6px; line-height: 1.5; }
+  /* linhas com barra horizontal */
+  .rm-linha { display: grid; grid-template-columns: minmax(110px, 170px) 1fr minmax(150px, auto); gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); position: relative; }
+  .rm-linha:last-child { border-bottom: 0; }
+  .rm-linha .n { font-weight: 700; font-size: 13px; line-height: 1.25; }
+  .rm-linha .n small { display: block; font-weight: 500; font-size: 11px; color: var(--text-muted); }
+  .rm-linha .val { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; }
+  .rm-linha .val small { display: block; font-size: 11px; color: var(--text-muted); }
+  .rm-trilho { height: 12px; background: var(--surface-2); border-radius: 6px; position: relative; }
+  .rm-barra { height: 100%; background: var(--accent); border-radius: 6px; }
+  .rm-marca-meta { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--navy); border-radius: 1px; }
+  .rm-st { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: var(--radius-full); }
+  .rm-st.bom { background: var(--green-bg); color: var(--green); }
+  .rm-st.atencao { background: var(--orange-bg); color: var(--orange); }
+  .rm-st.ruim { background: var(--red-bg); color: var(--red); }
+  .rm-legenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-secondary); margin-bottom: 8px; }
+  .rm-legenda i { display: inline-block; width: 12px; height: 8px; border-radius: 3px; background: var(--accent); margin-right: 5px; vertical-align: middle; }
+  .rm-legenda i.meta { width: 2px; height: 12px; background: var(--navy); border-radius: 1px; }
+  /* gráfico de colunas (vendas por hora) */
+  .rm-colunas { display: flex; align-items: flex-end; gap: 4px; height: 210px; padding: 18px 0 0; border-bottom: 1px solid var(--border); }
+  .rm-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; cursor: default; }
+  .rm-col .b { width: 100%; max-width: 34px; background: var(--accent); opacity: .55; border-radius: 4px 4px 0 0; transition: opacity .12s; }
+  .rm-col.pico .b { opacity: 1; }
+  .rm-col:hover .b { opacity: 1; }
+  .rm-col .topo { font-size: 10.5px; font-weight: 800; color: var(--text-primary); margin-bottom: 3px; white-space: nowrap; visibility: hidden; }
+  .rm-col.pico .topo, .rm-col.vale .topo { visibility: visible; }
+  .rm-eixo { display: flex; gap: 4px; margin-top: 5px; }
+  .rm-eixo span { flex: 1; min-width: 0; text-align: center; font-size: 10.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .rm-dica { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; font-size: 11.5px; line-height: 1.45; padding: 7px 10px; border-radius: 8px; white-space: nowrap; z-index: 5; pointer-events: none; box-shadow: var(--shadow); }
+  .rm-col:hover .rm-dica, .rm-col:focus .rm-dica { display: block; }
+  .rm-col .rm-dica { bottom: auto; top: 0; }
+  /* tabelas */
+  .rm-tab { width: 100%; min-width: 0 !important; border-collapse: collapse; }
+  .rm-tab .pos { white-space: nowrap; overflow-wrap: normal; }
+  .rm-tab th { text-align: left; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); padding: 7px 8px; border-bottom: 1px solid var(--border); background: transparent; }
+  .rm-tab td { overflow-wrap: anywhere; padding: 8px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+  .rm-tab tr:last-child td { border-bottom: 0; }
+  .rm-tab .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rm-tab .pos { color: var(--text-muted); font-weight: 800; width: 26px; }
+  .rm-tab .sub { display: block; font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .rm-mini { height: 6px; background: var(--surface-2); border-radius: 3px; margin-top: 5px; min-width: 60px; }
+  .rm-mini > div { height: 100%; background: var(--accent); border-radius: 3px; }
+  .rm-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* equipe */
+  .rm-equipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .rm-eq { background: var(--card-bg-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; }
+  .rm-eq .r { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+  .rm-eq .v { font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; font-weight: 800; color: var(--navy); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .rm-eq .l { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
+  .rm-details { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 14px; margin-top: 10px; }
+  .rm-details summary { cursor: pointer; font-weight: 800; font-size: 13px; }
+  .rm-details ul { margin: 10px 0 2px; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+  .rm-details ul span { color: var(--text-muted); font-size: 12px; }
+  .rm-salario { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
+  .rm-salario input { width: 110px; margin: 0; padding: 6px 10px; min-height: 0; }
+  .rm-mes { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 16px; min-width: 150px; text-align: center; }
+  @media (max-width: 860px) {
+    .rm-kpi .v { font-size: 22px; }
+    .rm-linha { grid-template-columns: minmax(90px, 120px) 1fr; }
+    .rm-linha .val { grid-column: 1 / -1; text-align: left; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .rm-linha .val small { display: inline; }
+    .rm-card { padding: 16px 14px; }
+  }
+  @media print {
+    .rm-nao-imprimir { display: none !important; }
+    .rm-card, .rm-kpi { box-shadow: none; break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
@@ -876,6 +962,7 @@
         <button class="nav-item" data-pagina="olho-validade" onclick="irPara('olho-validade')"><span class="dot"></span>De olho na validade</button>
         <button class="nav-item" id="nav-vendas-loja" style="display:none" data-pagina="vendas-loja" onclick="irPara('vendas-loja')"><span class="dot"></span>Vendas da Loja</button>
         <button class="nav-item" id="nav-venda-dia" style="display:none" data-pagina="venda-dia" onclick="irPara('venda-dia')"><span class="dot"></span>Venda do dia</button>
+        <button class="nav-item" id="nav-relatorio-mensal" style="display:none" data-pagina="relatorio-mensal" onclick="irPara('relatorio-mensal')"><span class="dot"></span>Relatório mensal</button>
         <button class="nav-item" data-pagina="vendas" onclick="irPara('vendas')"><span class="dot"></span>Vendas</button>
         <button class="nav-item" data-pagina="vendas-comparativo" onclick="irPara('vendas-comparativo')"><span class="dot"></span>Comparativo de Vendas</button>
         <button class="nav-item" id="nav-giro-produtos" style="display:none" data-pagina="giro-produtos" onclick="irPara('giro-produtos')"><span class="dot"></span>Giro de Produtos</button>
@@ -1130,6 +1217,7 @@ async function fazerLogin() {
     document.getElementById('nav-giro-produtos').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-vendas-loja').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-venda-dia').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
+    document.getElementById('nav-relatorio-mensal').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-importar-vendas').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-ruptura-mix').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-visitas-site').style.display = String(encontrado.matricula) === '7990353' ? '' : 'none';
@@ -1162,7 +1250,7 @@ function iniciais(nome) {
 const GAVETA_POR_PAGINA = {
   equipe: 'colaboradores', escala: 'colaboradores', 'historico-faltas': 'colaboradores',
   avisos: 'avisos', ocorrencias: 'avisos',
-  perdas: 'indicadores', validade: 'indicadores', vendas: 'indicadores', 'vendas-loja': 'indicadores', 'venda-dia': 'indicadores', 'vendas-comparativo': 'indicadores', 'giro-produtos': 'indicadores', 'importar-vendas': 'indicadores', 'painel-resultados': 'indicadores', 'resultados-inventario': 'indicadores', 'visitas-site': 'indicadores',
+  perdas: 'indicadores', validade: 'indicadores', vendas: 'indicadores', 'vendas-loja': 'indicadores', 'venda-dia': 'indicadores', 'relatorio-mensal': 'indicadores', 'vendas-comparativo': 'indicadores', 'giro-produtos': 'indicadores', 'importar-vendas': 'indicadores', 'painel-resultados': 'indicadores', 'resultados-inventario': 'indicadores', 'visitas-site': 'indicadores',
   conferencias: 'indicadores', inventario: 'indicadores', 'historico-exclusoes': 'indicadores',
   pedidos: 'operacao', 'estoque-loja': 'operacao', 'ruptura-mix': 'operacao', 'uso-consumo': 'operacao', 'checklist-setor': 'operacao', 'visita-tecnica': 'operacao', 'mapa-loja': 'operacao', 'jornal-ofertas': 'ofertas', 'ofertas-whats': 'ofertas', 'estoque-jornal': 'ofertas', 'pesquisa-preco': 'ofertas', chegadas: 'ofertas', 'pontas-extras': 'operacao',
 };
@@ -1219,6 +1307,7 @@ async function irPara(pagina) {
     else if (pagina === 'giro-produtos') await paginaGiroProdutos();
     else if (pagina === 'vendas-loja') await paginaVendasLoja();
     else if (pagina === 'venda-dia') await paginaVendaDia();
+    else if (pagina === 'relatorio-mensal') await paginaRelatorioMensal();
     else if (pagina === 'importar-vendas') await paginaImportarVendas();
     else if (pagina === 'painel-resultados') await paginaPainelResultados();
     else if (pagina === 'resultados-inventario') await paginaResultadosInventario();
@@ -11492,6 +11581,486 @@ async function alternarAtivoPerguntaVisita(id, ativo) {
   mostrarToast(ativo ? 'Pergunta reativada.' : 'Pergunta desativada.');
   renderizarVisitaTecnica();
 }
+
+
+// =============================================================================
+// Relatório mensal — dashboard do mês inteiro numa página só.
+// Fontes:
+//  • relatorio_mensal_dados (sobe aqui mesmo, 1x por mês): PDF "Meta Venda
+//    Loja" (meta × venda por setor), planilhas do Falcon de venda por PDV,
+//    venda por hora e venda por finalizadora (formas de pagamento).
+//  • vendas_diarias (via RPC vendas_loja_grupos): produtos mais vendidos,
+//    margem real e comparação com o mês anterior.
+//  • perdas: quebras do mês.
+//  • escala_folgas + colaboradores_loja: turnover — quem está na escala do
+//    mês e não aparece na do mês seguinte saiu; quem aparece só no seguinte
+//    entrou. Faltas/atestados do mês vêm da mesma tabela.
+// =============================================================================
+const RM_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const RM_PAGAMENTO_NOME = {
+  'DINHEIRO': 'Dinheiro', 'CARTAO CREDITO': 'Cartão de crédito', 'CARTAO DEBITO': 'Cartão de débito',
+  'CARTEIRA DIGITAL': 'Carteira digital (Pix)', 'CARTAO MESA': 'Cartão Mesa', 'PRESENCA PREMIADA': 'Presença Premiada',
+};
+function rmNomePagamento(n) { return RM_PAGAMENTO_NOME[n] || (n ? n.charAt(0) + n.slice(1).toLowerCase() : '—'); }
+function rmMesTexto(m) { const [y, mm] = m.split('-').map(Number); return RM_MESES[mm - 1] + ' de ' + y; }
+function rmMesTitulo(m) { const t = rmMesTexto(m); return t.charAt(0).toUpperCase() + t.slice(1); }
+function rmMesSoma(m, n) { const [y, mm] = m.split('-').map(Number); const d = new Date(Date.UTC(y, mm - 1 + n, 1)); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
+function rmIni(m) { return m + '-01'; }
+function rmFim(m) { const [y, mm] = m.split('-').map(Number); return vlData(new Date(Date.UTC(y, mm, 0))); }
+function rmDiasMes(m) { const [y, mm] = m.split('-').map(Number); return new Date(Date.UTC(y, mm, 0)).getUTCDate(); }
+function rmNum(n, casas) { return Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: casas || 0, maximumFractionDigits: casas || 0 }); }
+function rmPct(n, casas) { return n == null || !isFinite(n) ? '—' : Number(n).toLocaleString('pt-BR', { minimumFractionDigits: casas == null ? 1 : casas, maximumFractionDigits: casas == null ? 1 : casas }) + '%'; }
+function rmBrNum(s) { return Number(String(s).replace(/\./g, '').replace(',', '.')); }
+
+async function paginaRelatorioMensal() {
+  const el = document.getElementById('conteudo-principal');
+  if (!estado.usuario || !MATRICULAS_GIRO.includes(String(estado.usuario.matricula))) {
+    el.innerHTML = cabecalho('Relatório mensal', '') + '<div class="celula-vazio">Página ainda não liberada para o seu acesso.</div>';
+    return;
+  }
+  estado.rm = estado.rm || {};
+  if (!estado.rm.mes) {
+    // abre no último mês que tem dados subidos; se não tiver nenhum, no mês passado
+    const { data } = await sb.from('relatorio_mensal_dados').select('mes_ref').neq('tipo', 'config').order('mes_ref', { ascending: false }).limit(1);
+    const hoje = new Date();
+    const passado = rmMesSoma(hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0'), -1);
+    estado.rm.mes = data && data.length ? data[0].mes_ref : passado;
+  }
+  el.innerHTML = cabecalho('Relatório mensal', 'O mês inteiro da loja numa tela: venda, meta, caixas, horários, pagamentos, produtos, quebras e equipe') +
+    '<div class="carregando">Montando o relatório de ' + rmMesTexto(estado.rm.mes) + '…</div>';
+  try {
+    await rmCarregar();
+    renderizarRelatorioMensal();
+  } catch (e) {
+    el.innerHTML = cabecalho('Relatório mensal', '') + '<div class="celula-vazio">Não consegui montar o relatório: ' + vlEsc(e.message || '') + '</div>';
+  }
+}
+
+async function rmTodasLinhas(montar) {
+  const PAGINA = 1000, todas = [];
+  for (let de = 0; de < 50000; de += PAGINA) {
+    const { data, error } = await montar().range(de, de + PAGINA - 1);
+    if (error) throw error;
+    todas.push(...(data || []));
+    if (!data || data.length < PAGINA) break;
+  }
+  return todas;
+}
+
+async function rmCarregar() {
+  const m = estado.rm.mes, ini = rmIni(m), fim = rmFim(m);
+  const ant = rmMesSoma(m, -1), prox = rmMesSoma(m, 1);
+  const [arquivos, setores, produtos, perdas, escala, colabs, config] = await Promise.all([
+    sb.from('relatorio_mensal_dados').select('tipo,dados,arquivo,enviado_por_nome,atualizado_em').eq('mes_ref', m).then((r) => { if (r.error) throw r.error; return r.data || []; }),
+    vlRpc('vendas_loja_grupos', { p_ini: ini, p_fim: fim, p_ini_ant: rmIni(ant), p_fim_ant: rmFim(ant), p_nivel: 2 }).catch(() => []),
+    vlRpc('vendas_loja_grupos', { p_ini: ini, p_fim: fim, p_ini_ant: rmIni(ant), p_fim_ant: rmFim(ant), p_nivel: 6 }).catch(() => []),
+    rmTodasLinhas(() => sb.from('perdas').select('setor,produto_cod,produto,unidade,quantidade,valor_perdido,valor_vendido').gte('periodo_inicio', ini).lte('periodo_fim', fim)).catch(() => []),
+    rmTodasLinhas(() => sb.from('escala_folgas').select('colaborador_loja_id,data,tipo').gte('data', ini).lte('data', rmFim(prox))).catch(() => []),
+    sb.from('colaboradores_loja').select('id,nome,cargo,setor,ativo').then((r) => r.data || []),
+    sb.from('relatorio_mensal_dados').select('mes_ref,dados').eq('tipo', 'config').lte('mes_ref', m).order('mes_ref', { ascending: false }).limit(1).then((r) => r.data || []),
+  ]);
+  const arq = {};
+  arquivos.forEach((a) => { arq[a.tipo] = a; });
+  estado.rmDados = { mes: m, prox, arq, setores, produtos, perdas, escala, colabs, salario: Number((config[0] && config[0].dados && config[0].dados.salario_medio) || 1900) };
+}
+
+function rmMudarMes(n) {
+  estado.rm.mes = rmMesSoma(estado.rm.mes, n);
+  paginaRelatorioMensal();
+}
+
+// ---------- cálculos ----------
+function rmCalcular() {
+  const d = estado.rmDados;
+  const g = (t) => (d.arq[t] ? d.arq[t].dados : null);
+  const metas = g('metas'), pdv = g('pdv'), hora = g('hora'), pag = g('pagamento');
+  const vendaUlva = d.setores.reduce((a, s) => a + Number(s.venda || 0), 0);
+  const vendaUlvaAnt = d.setores.reduce((a, s) => a + Number(s.venda_ant || 0), 0);
+  const pagTotal = pag ? pag.formas.reduce((a, f) => a + Number(f.total), 0) : 0;
+  const venda = metas ? metas.total.venda : (pagTotal || vendaUlva);
+  const meta = metas ? metas.total.meta : null;
+  const clientes = hora ? hora.horas.reduce((a, h) => a + Number(h.clientes), 0) : (pdv ? pdv.pdvs.reduce((a, p) => a + Number(p.clientes), 0) : null);
+  const ticket = clientes ? (pagTotal || venda) / clientes : null;
+  // quebras
+  const perdaTotal = d.perdas.reduce((a, p) => a + Number(p.valor_perdido || 0), 0);
+  const vendaPorClasse = {};
+  d.setores.forEach((s) => { vendaPorClasse[s.chave] = Number(s.venda || 0); });
+  const porSetorPerda = {};
+  d.perdas.forEach((p) => {
+    const k = p.setor || 'outros';
+    const s = porSetorPerda[k] = porSetorPerda[k] || { setor: k, perda: 0, itens: 0 };
+    s.perda += Number(p.valor_perdido || 0); s.itens++;
+  });
+  const quebraSetores = Object.values(porSetorPerda).map((s) => {
+    const classes = VENDA_SETOR_PERDAS[s.setor] || [];
+    const vendaSetor = classes.reduce((a, c) => a + (vendaPorClasse[c] || 0), 0);
+    return Object.assign(s, { nome: nomeSetor(s.setor), venda: vendaSetor, pct: vendaSetor > 0 ? (s.perda / vendaSetor) * 100 : null });
+  }).sort((a, b) => b.perda - a.perda);
+  const porProdPerda = {};
+  d.perdas.forEach((p) => {
+    const k = p.produto_cod || p.produto;
+    const x = porProdPerda[k] = porProdPerda[k] || { produto: p.produto, setor: p.setor, perda: 0, qtd: 0, un: p.unidade };
+    x.perda += Number(p.valor_perdido || 0); x.qtd += Number(p.quantidade || 0);
+  });
+  const topPerdas = Object.values(porProdPerda).sort((a, b) => b.perda - a.perda).slice(0, 10);
+  return { metas, pdv, hora, pag, venda, meta, vendaUlva, vendaUlvaAnt, clientes, ticket, pagTotal, perdaTotal, quebraSetores, topPerdas, equipe: rmEquipe() };
+}
+
+function rmEquipe() {
+  const d = estado.rmDados, m = d.mes;
+  const fimM = rmFim(m);
+  const noMes = new Set(), noProx = new Set();
+  let faltas = 0, atestados = 0;
+  d.escala.forEach((r) => {
+    if (!r.colaborador_loja_id) return;
+    if (r.data <= fimM) {
+      noMes.add(r.colaborador_loja_id);
+      if (r.tipo === 'falta') faltas++;
+      if (r.tipo === 'atestado') atestados++;
+    } else noProx.add(r.colaborador_loja_id);
+  });
+  const porId = {};
+  d.colabs.forEach((c) => { porId[c.id] = c; });
+  const temProx = noProx.size > 0;
+  const saiu = temProx ? [...noMes].filter((id) => !noProx.has(id)).map((id) => porId[id]).filter(Boolean) : [];
+  const entrou = temProx ? [...noProx].filter((id) => !noMes.has(id)).map((id) => porId[id]).filter(Boolean) : [];
+  const inicio = noMes.size, fim = temProx ? noProx.size : null;
+  const media = temProx ? (inicio + fim) / 2 : inicio;
+  const turnover = temProx && media ? (((entrou.length + saiu.length) / 2) / media) * 100 : null;
+  const desligamento = temProx && media ? (saiu.length / media) * 100 : null;
+  const confirmados = saiu.filter((c) => c.ativo === false).length;
+  const ordenar = (a, b) => nomeSetor(a.setor).localeCompare(nomeSetor(b.setor)) || a.nome.localeCompare(b.nome);
+  saiu.sort(ordenar); entrou.sort(ordenar);
+  const saidasSetor = {};
+  saiu.forEach((c) => { const n = nomeSetor(c.setor); saidasSetor[n] = (saidasSetor[n] || 0) + 1; });
+  return { temProx, inicio, fim, media, saiu, entrou, turnover, desligamento, confirmados, faltas, atestados, saidasSetor };
+}
+
+// ---------- desenho ----------
+function rmStatusMeta(pct) {
+  if (pct == null) return '';
+  if (pct >= 100) return '<span class="rm-st bom">✓ ' + rmPct(pct) + '</span>';
+  if (pct >= 95) return '<span class="rm-st atencao">▼ ' + rmPct(pct) + '</span>';
+  return '<span class="rm-st ruim">▼ ' + rmPct(pct) + '</span>';
+}
+function rmStatusQuebra(pct) {
+  if (pct == null) return '';
+  const c = corQuebraSetor(pct);
+  const cls = c === 'vermelho' ? 'ruim' : c === 'laranja' ? 'atencao' : 'bom';
+  return '<span class="rm-st ' + cls + '">' + (cls === 'bom' ? '✓ ' : '▲ ') + rmPct(pct, 2) + '</span>';
+}
+function rmVazio(texto) { return '<div class="rm-vazio">' + texto + '</div>'; }
+
+function renderizarRelatorioMensal() {
+  const d = estado.rmDados;
+  const c = rmCalcular();
+  const fontes = [
+    ['metas', 'Metas por setor (PDF)'], ['pdv', 'Venda por PDV'], ['hora', 'Venda por hora'], ['pagamento', 'Formas de pagamento'],
+  ].map(([t, n]) => '<span class="rm-fonte ' + (d.arq[t] ? 'ok' : 'falta') + '" title="' + (d.arq[t] ? vlEsc((d.arq[t].arquivo || '') + ' · ' + (d.arq[t].enviado_por_nome || '')) : 'Ainda não subido') + '">' + n + '</span>').join('') +
+    '<span class="rm-fonte ' + (d.produtos.length ? 'ok' : 'falta') + '">Vendas do ULVA (produtos)</span>' +
+    '<span class="rm-fonte ' + (d.perdas.length ? 'ok' : 'falta') + '">Quebras</span>' +
+    '<span class="rm-fonte ' + (c.equipe.inicio ? (c.equipe.temProx ? 'ok' : 'falta') : 'falta') + '">' + (c.equipe.temProx ? 'Escalas dos 2 meses' : c.equipe.inicio ? 'Falta a escala de ' + RM_MESES[Number(d.prox.slice(5)) - 1] : 'Escala do mês') + '</span>';
+
+  const barra =
+    '<div class="toolbar rm-nao-imprimir" style="justify-content:space-between;align-items:center;">' +
+      '<div style="display:flex;gap:8px;align-items:center;">' +
+        '<button class="chip" onclick="rmMudarMes(-1)" aria-label="Mês anterior">‹</button>' +
+        '<span class="rm-mes">' + rmMesTitulo(d.mes) + '</span>' +
+        '<button class="chip" onclick="rmMudarMes(1)" aria-label="Próximo mês">›</button>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button class="btn-acao" onclick="document.getElementById(\'rm-arquivos\').click()">📤 Subir arquivos do mês</button>' +
+        '<button class="btn-acao secundario" onclick="window.print()">🖨️ Imprimir / PDF</button>' +
+        '<input type="file" id="rm-arquivos" multiple accept=".pdf,.xlsx,.xls,.csv" style="display:none" onchange="rmImportar(this)">' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('conteudo-principal').innerHTML =
+    cabecalho('Relatório mensal', 'O mês inteiro da loja numa tela: venda, meta, caixas, horários, pagamentos, produtos, quebras e equipe') +
+    barra + '<div class="rm-fontes">' + fontes + '</div>' +
+    rmHtmlKpis(c) +
+    rmHtmlMetas(c) +
+    '<div class="rm-grid2">' + rmHtmlHora(c) + rmHtmlPagamento(c) + '</div>' +
+    '<div style="height:16px"></div>' +
+    '<div class="rm-grid2">' + rmHtmlPdv(c) + rmHtmlProdutos(c) + '</div>' +
+    '<div style="height:16px"></div>' +
+    rmHtmlQuebras(c) +
+    rmHtmlEquipe(c) +
+    '<div style="font-size:11.5px;color:var(--text-muted);margin:6px 2px 24px;line-height:1.5;">Venda, meta e % por setor vêm do PDF “Meta Venda Loja”. Clientes e ticket médio vêm da venda por hora (cada cupom = 1 cliente). Produtos, margem real e comparação com o mês anterior vêm das vendas do Falcon importadas no ULVA. Quebra % = perda do setor ÷ venda do setor.</div>';
+}
+
+function rmHtmlKpis(c) {
+  const e = c.equipe, d = estado.rmDados;
+  const ating = c.meta ? (c.venda / c.meta) * 100 : null;
+  const varMes = vlPct(c.vendaUlva, c.vendaUlvaAnt);
+  const k = (r, v, l) => '<div class="rm-kpi"><div class="r">' + r + '</div><div class="v">' + v + '</div><div class="l">' + l + '</div></div>';
+  return '<div class="rm-kpis">' +
+    k('Venda do mês', vlCurto(c.venda), varMes != null && c.vendaUlvaAnt > 0 ? vlVar(varMes) + ' vs mês anterior' : vlBRL(c.venda)) +
+    k('Meta', ating != null ? rmPct(ating) : '—', c.meta ? (c.venda >= c.meta ? '<span class="rm-st bom">✓ Meta batida</span>' : '<span class="rm-st ' + (ating >= 95 ? 'atencao' : 'ruim') + '">▼ Abaixo</span>') + ' de ' + vlCurto(c.meta) + (c.venda < c.meta ? ' · faltaram ' + vlBRL(c.meta - c.venda) : ' · passou ' + vlBRL(c.venda - c.meta)) : 'Suba o PDF de metas') +
+    k('Clientes', c.clientes ? rmNum(c.clientes) : '—', c.clientes ? rmNum(c.clientes / rmDiasMes(d.mes)) + ' por dia, em média' : 'Suba a venda por hora') +
+    k('Ticket médio', c.ticket ? vlBRL2(c.ticket) : '—', c.ticket ? 'venda ÷ clientes do mês' : 'Precisa da venda por hora') +
+    k('Quebras', d.perdas.length ? vlCurto(c.perdaTotal) : '—', d.perdas.length ? rmPct(c.vendaUlva ? (c.perdaTotal / c.vendaUlva) * 100 : null, 2) + ' da venda da loja' : 'Sem quebras importadas no mês') +
+    k('Turnover', e.turnover != null ? rmPct(e.turnover) : '—', e.temProx ? e.entrou.length + ' entradas · ' + e.saiu.length + ' saídas' : 'Precisa da escala do mês seguinte') +
+  '</div>';
+}
+
+function rmHtmlMetas(c) {
+  if (!c.metas) return '<div class="rm-card"><h2>Meta × realizado por setor</h2>' + rmVazio('Suba o PDF “Meta Venda Loja” do mês pelo botão <b>Subir arquivos do mês</b>.') + '</div>';
+  const margemReal = {};
+  estado.rmDados.setores.forEach((s) => { margemReal[s.chave] = s.margem != null ? Number(s.margem) : null; });
+  const linhas = c.metas.setores.filter((s) => s.meta > 0 || s.venda > 0).map((s) => Object.assign({}, s, { pct: s.meta > 0 ? (s.venda / s.meta) * 100 : null }))
+    .sort((a, b) => b.venda - a.venda);
+  const max = Math.max(...linhas.map((s) => Math.max(s.venda, s.meta)), 1);
+  const bateram = linhas.filter((s) => s.pct != null && s.pct >= 100);
+  const html = linhas.map((s) => {
+    const mr = margemReal[s.nome];
+    const margemTxt = mr != null && s.margem_obj > 0 ? 'margem ' + rmPct(mr) + ' (obj. ' + rmPct(s.margem_obj, 0) + ')' : '';
+    return '<div class="rm-linha" title="' + vlEsc(vdSetor(s.nome) + ': venda ' + vlBRL2(s.venda) + ' · meta ' + vlBRL2(s.meta)) + '">' +
+      '<div class="n">' + vlEsc(vdSetor(s.nome)) + (margemTxt ? '<small>' + margemTxt + '</small>' : '') + '</div>' +
+      '<div class="rm-trilho"><div class="rm-barra" style="width:' + (s.venda / max * 100) + '%;' + (s.pct != null && s.pct < 100 ? 'opacity:.55;' : '') + '"></div>' +
+        (s.meta > 0 ? '<div class="rm-marca-meta" style="left:calc(' + (s.meta / max * 100) + '% - 1px);"></div>' : '') + '</div>' +
+      '<div class="val"><b>' + vlBRL(s.venda) + '</b> ' + rmStatusMeta(s.pct) + '<small>meta ' + vlBRL(s.meta) + (s.meta > 0 ? ' · ' + (s.venda >= s.meta ? '+' : '−') + vlBRL(Math.abs(s.venda - s.meta)).replace('R$ ', 'R$ ') : '') + '</small></div>' +
+    '</div>';
+  }).join('');
+  const piores = linhas.filter((s) => s.pct != null && s.pct < 100).sort((a, b) => (a.venda - a.meta) - (b.venda - b.meta)).slice(0, 2);
+  const melhores = [...bateram].sort((a, b) => (b.venda - b.meta) - (a.venda - a.meta)).slice(0, 2);
+  const insight = (melhores.length ? 'Quem mais passou da meta: ' + melhores.map((s) => '<b>' + vlEsc(vdSetor(s.nome)) + '</b> (+' + vlBRL(s.venda - s.meta) + ')').join(' e ') + '. ' : '') +
+    (piores.length ? 'O que mais ficou devendo: ' + piores.map((s) => '<b>' + vlEsc(vdSetor(s.nome)) + '</b> (−' + vlBRL(s.meta - s.venda) + ')').join(' e ') + '.' : '');
+  return '<div class="rm-card"><h2>Meta × realizado por setor</h2>' +
+    '<div class="rm-sub">' + bateram.length + ' de ' + linhas.filter((s) => s.meta > 0).length + ' setores bateram a meta. Barra = venda; tracinho escuro = meta; barra clara = abaixo da meta.</div>' +
+    '<div class="rm-legenda"><span><i></i>Venda</span><span><i class="meta"></i>Meta</span></div>' +
+    html + (insight ? '<div class="rm-insight">' + insight + '</div>' : '') + '</div>';
+}
+
+function rmHtmlHora(c) {
+  if (!c.hora) return '<div class="rm-card"><h2>Vendas por hora</h2>' + rmVazio('Suba a planilha de venda por hora do Falcon.') + '</div>';
+  const horas = c.hora.horas.filter((h) => Number(h.total) > 1000 || Number(h.clientes) > 20);
+  const max = Math.max(...horas.map((h) => Number(h.total)), 1);
+  const pico = horas.reduce((a, h) => (Number(h.total) > Number(a.total) ? h : a), horas[0]);
+  const picoCli = horas.reduce((a, h) => (Number(h.clientes) > Number(a.clientes) ? h : a), horas[0]);
+  // vale: hora mais fraca entre 10h e 17h (fora abertura/fechamento)
+  const meio = horas.filter((h) => h.hora >= '10:00' && h.hora <= '17:00');
+  const vale = meio.length ? meio.reduce((a, h) => (Number(h.total) < Number(a.total) ? h : a), meio[0]) : null;
+  const cols = horas.map((h) => {
+    const t = Number(h.total), cl = Number(h.clientes);
+    return '<div class="rm-col' + (h === pico ? ' pico' : '') + (h === vale ? ' vale' : '') + '" tabindex="0">' +
+      '<div class="rm-dica"><b>' + h.hora.slice(0, 2) + 'h</b> · ' + vlBRL(t) + '<br>' + rmNum(cl) + ' clientes · ticket ' + vlBRL2(cl ? t / cl : 0) + '</div>' +
+      '<div class="topo">' + vlCurto(t).replace('R$ ', '').replace(' mil', 'k') + '</div>' +
+      '<div class="b" style="height:' + (t / max * 100) + '%;"></div></div>';
+  }).join('');
+  const eixo = horas.map((h) => '<span>' + h.hora.slice(0, 2) + 'h</span>').join('');
+  return '<div class="rm-card"><h2>Vendas por hora</h2>' +
+    '<div class="rm-sub">Soma do mês em cada faixa de horário. Passe o dedo/mouse nas colunas para ver clientes e ticket.</div>' +
+    '<div class="rm-colunas">' + cols + '</div><div class="rm-eixo">' + eixo + '</div>' +
+    '<div class="rm-insight">Pico às <b>' + pico.hora.slice(0, 2) + 'h</b> (' + vlBRL(pico.total) + ' no mês)' +
+      (picoCli !== pico ? ', mas o maior fluxo de clientes é às <b>' + picoCli.hora.slice(0, 2) + 'h</b>' : ', também o horário com mais clientes (' + rmNum(pico.clientes) + ')') + '.' +
+      (vale ? ' Vale do dia às <b>' + vale.hora.slice(0, 2) + 'h</b> — bom horário para reposição pesada e intervalos.' : '') + '</div></div>';
+}
+
+function rmHtmlPagamento(c) {
+  if (!c.pag) return '<div class="rm-card"><h2>Formas de pagamento</h2>' + rmVazio('Suba a planilha de venda por finalizadora.') + '</div>';
+  const total = c.pagTotal || 1;
+  const formas = [...c.pag.formas].sort((a, b) => b.total - a.total);
+  const max = formas.length ? formas[0].total : 1;
+  const html = formas.map((f) => '<div class="rm-linha">' +
+    '<div class="n">' + vlEsc(rmNomePagamento(f.nome)) + '<small>' + rmNum(f.qtd) + ' pagamentos · média ' + vlBRL2(f.qtd ? f.total / f.qtd : 0) + '</small></div>' +
+    '<div class="rm-trilho"><div class="rm-barra" style="width:' + (f.total / max * 100) + '%;"></div></div>' +
+    '<div class="val"><b>' + rmPct(f.total / total * 100) + '</b><small>' + vlBRL(f.total) + '</small></div></div>').join('');
+  const cartao = formas.filter((f) => /CARTAO (CREDITO|DEBITO)/.test(f.nome)).reduce((a, f) => a + f.total, 0);
+  const top = formas[0];
+  return '<div class="rm-card"><h2>Formas de pagamento</h2>' +
+    '<div class="rm-sub">Participação de cada forma no valor recebido no mês.</div>' + html +
+    '<div class="rm-insight"><b>' + vlEsc(rmNomePagamento(top.nome)) + '</b> é a forma mais usada (' + rmPct(top.total / total * 100) + '). Crédito + débito somam <b>' + rmPct(cartao / total * 100) + '</b> do faturamento.</div></div>';
+}
+
+function rmHtmlPdv(c) {
+  if (!c.pdv) return '<div class="rm-card"><h2>Venda por PDV</h2>' + rmVazio('Suba a planilha de venda por PDV do Falcon.') + '</div>';
+  const lista = [...c.pdv.pdvs].sort((a, b) => b.total - a.total);
+  const max = lista.length ? lista[0].total : 1;
+  const totalCli = lista.reduce((a, p) => a + p.clientes, 0), totalV = lista.reduce((a, p) => a + p.total, 0);
+  const ticketGeral = totalCli ? totalV / totalCli : 0;
+  const linhas = lista.map((p, i) => {
+    const tk = p.clientes ? p.total / p.clientes : 0;
+    return '<tr><td class="pos">' + (i + 1) + '</td><td><b>PDV ' + p.pdv + '</b><div class="rm-mini"><div style="width:' + (p.total / max * 100) + '%"></div></div></td>' +
+      '<td class="num"><b>' + vlBRL(p.total) + '</b><span class="sub">' + rmPct(p.total / totalV * 100) + '</span></td>' +
+      '<td class="num">' + rmNum(p.clientes) + '</td><td class="num">' + vlBRL2(tk) + (tk < ticketGeral * 0.7 ? '<span class="sub">compra rápida</span>' : '') + '</td></tr>';
+  }).join('');
+  const maisCli = [...lista].sort((a, b) => b.clientes - a.clientes)[0];
+  const menor = lista[lista.length - 1];
+  return '<div class="rm-card"><h2>Venda por PDV</h2><div class="rm-sub">Ranking dos caixas no mês. Ticket bem abaixo da média costuma ser caixa rápido/preferencial.</div>' +
+    '<div class="rm-scroll"><table class="rm-tab"><thead><tr><th></th><th>Caixa</th><th class="num">Venda</th><th class="num">Clientes</th><th class="num">Ticket</th></tr></thead><tbody>' + linhas + '</tbody></table></div>' +
+    '<div class="rm-insight">Maior venda: <b>PDV ' + lista[0].pdv + '</b>. Mais clientes atendidos: <b>PDV ' + maisCli.pdv + '</b> (' + rmNum(maisCli.clientes) + '). Menor movimento: <b>PDV ' + menor.pdv + '</b> (' + vlBRL(menor.total) + ').</div></div>';
+}
+
+function rmHtmlProdutos(c) {
+  const d = estado.rmDados;
+  const lista = d.produtos.filter((p) => Number(p.venda) > 0).sort((a, b) => Number(b.venda) - Number(a.venda)).slice(0, 15);
+  if (!lista.length) return '<div class="rm-card"><h2>Produtos mais vendidos</h2>' + rmVazio('Sem vendas do mês no ULVA. Suba as vendas pelo “Importar vendas (Falcon)”.') + '</div>';
+  const max = Number(lista[0].venda);
+  const total = d.produtos.reduce((a, p) => a + Number(p.venda || 0), 0);
+  const top15 = lista.reduce((a, p) => a + Number(p.venda), 0);
+  const linhas = lista.map((p, i) => {
+    const v = vlPct(Number(p.venda), Number(p.venda_ant));
+    return '<tr><td class="pos">' + (i + 1) + '</td><td><b>' + vlEsc(p.nome) + '</b><span class="sub">cód. ' + vlEsc(p.chave) + (p.margem != null ? ' · margem ' + rmPct(Number(p.margem)) : '') + '</span><div class="rm-mini"><div style="width:' + (Number(p.venda) / max * 100) + '%"></div></div></td>' +
+      '<td class="num"><b>' + vlBRL(p.venda) + '</b><span class="sub" style="font-weight:800;color:' + (v == null ? 'var(--text-muted)' : v >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (Number(p.venda_ant) > 0 ? (v >= 0 ? '▲ +' : '▼ ') + rmPct(v) : 'novo') + '</span></td></tr>';
+  }).join('');
+  return '<div class="rm-card"><h2>Produtos mais vendidos</h2><div class="rm-sub">Top 15 em valor no mês, com a variação contra o mês anterior. Esses 15 itens fizeram ' + rmPct(total ? top15 / total * 100 : null) + ' da venda.</div>' +
+    '<div class="rm-scroll"><table class="rm-tab"><thead><tr><th></th><th>Produto</th><th class="num">Venda</th></tr></thead><tbody>' + linhas + '</tbody></table></div></div>';
+}
+
+function rmHtmlQuebras(c) {
+  const d = estado.rmDados;
+  if (!d.perdas.length) return '<div class="rm-card"><h2>Quebras do mês</h2>' + rmVazio('Ainda não há perdas importadas para este mês (aba Perdas e Desperdícios).') + '</div>';
+  const max = c.quebraSetores.length ? c.quebraSetores[0].perda : 1;
+  const setores = c.quebraSetores.map((s) => '<div class="rm-linha">' +
+    '<div class="n">' + vlEsc(s.nome) + '<small>' + s.itens + ' produtos</small></div>' +
+    '<div class="rm-trilho"><div class="rm-barra" style="width:' + (s.perda / max * 100) + '%;"></div></div>' +
+    '<div class="val"><b>' + vlBRL(s.perda) + '</b> ' + rmStatusQuebra(s.pct) + '<small>' + (s.venda ? 'sobre ' + vlBRL(s.venda) + ' vendidos' : '') + '</small></div></div>').join('');
+  const prods = c.topPerdas.map((p, i) => '<tr><td class="pos">' + (i + 1) + '</td><td><b>' + vlEsc(p.produto) + '</b><span class="sub">' + vlEsc(nomeSetor(p.setor)) + ' · ' + rmNum(p.qtd, p.un && /kg/i.test(p.un) ? 1 : 0) + ' ' + vlEsc((p.un || '').toLowerCase()) + '</span></td><td class="num"><b>' + vlBRL2(p.perda) + '</b></td></tr>').join('');
+  const pior = c.quebraSetores[0];
+  return '<div class="rm-grid2">' +
+    '<div class="rm-card"><h2>Quebras por setor</h2><div class="rm-sub">Total de ' + vlBRL2(c.perdaTotal) + ' no mês. Selo = quebra % (verde até 1%, laranja até 3%, vermelho acima).</div>' + setores +
+      '<div class="rm-insight"><b>' + vlEsc(pior.nome) + '</b> concentra ' + rmPct(c.perdaTotal ? pior.perda / c.perdaTotal * 100 : null) + ' de toda a quebra da loja.</div></div>' +
+    '<div class="rm-card"><h2>Produtos que mais perderam</h2><div class="rm-sub">Top 10 em valor perdido.</div><div class="rm-scroll"><table class="rm-tab"><thead><tr><th></th><th>Produto</th><th class="num">Perda</th></tr></thead><tbody>' + prods + '</tbody></table></div></div>' +
+  '</div><div style="height:16px"></div>';
+}
+
+function rmHtmlEquipe(c) {
+  const e = c.equipe, d = estado.rmDados;
+  const sal = d.salario;
+  const mesNome = RM_MESES[Number(d.mes.slice(5)) - 1], proxNome = RM_MESES[Number(d.prox.slice(5)) - 1];
+  if (!e.inicio) return '<div class="rm-card"><h2>Equipe e turnover</h2>' + rmVazio('Não há escala de folgas deste mês no ULVA.') + '</div>';
+  const eq = (r, v, l) => '<div class="rm-eq"><div class="r">' + r + '</div><div class="v">' + v + '</div><div class="l">' + l + '</div></div>';
+  const diasPerdidos = e.faltas + e.atestados;
+  const lista = (arr) => '<ul>' + arr.map((x) => '<li>' + vlEsc(x.nome) + ' <span>· ' + vlEsc(nomeSetor(x.setor)) + (x.cargo ? ' · ' + vlEsc(x.cargo) : '') + '</span></li>').join('') + '</ul>';
+  const porSetor = Object.entries(e.saidasSetor).sort((a, b) => b[1] - a[1]);
+  const cards = e.temProx
+    ? eq('Na escala de ' + mesNome, rmNum(e.inicio), 'colaboradores') +
+      eq('Na escala de ' + proxNome, rmNum(e.fim), (e.fim - e.inicio >= 0 ? '+' : '') + (e.fim - e.inicio) + ' no quadro') +
+      eq('Entradas', rmNum(e.entrou.length), 'novos na escala de ' + proxNome) +
+      eq('Saídas', rmNum(e.saiu.length), e.confirmados + ' já inativos no cadastro') +
+      eq('Turnover', rmPct(e.turnover), '(entradas + saídas) ÷ 2 ÷ quadro médio') +
+      eq('Taxa de desligamento', rmPct(e.desligamento), 'saídas ÷ quadro médio')
+    : eq('Na escala de ' + mesNome, rmNum(e.inicio), 'colaboradores') +
+      eq('Turnover', '—', 'Suba a escala de ' + proxNome + ' para calcular');
+  const custos =
+    eq('Folha estimada', vlCurto((e.fim != null ? e.fim : e.inicio) * sal), (e.fim != null ? e.fim : e.inicio) + ' × ' + vlBRL(sal)) +
+    (e.temProx ? eq('Custo do turnover', vlCurto(e.saiu.length * sal), 'estimativa: 1 salário por desligamento') : '') +
+    eq('Faltas e atestados', rmNum(e.faltas) + ' · ' + rmNum(e.atestados), diasPerdidos + ' dias ≈ ' + vlBRL(diasPerdidos * sal / 30) + ' em salário-dia');
+  return '<div class="rm-card"><h2>Equipe e turnover</h2>' +
+    '<div class="rm-sub">Comparação da escala de folgas/DSR de ' + mesNome + ' com a de ' + proxNome + ': quem estava em ' + mesNome + ' e não está em ' + proxNome + ' conta como saída; quem aparece só em ' + proxNome + ' conta como entrada.</div>' +
+    '<div class="rm-equipe">' + cards + '</div>' +
+    '<div class="rm-equipe">' + custos + '</div>' +
+    '<div class="rm-salario rm-nao-imprimir">Salário médio usado nos custos: <input class="campo-input" type="number" step="50" min="0" value="' + sal + '" onchange="rmSalvarSalario(this.value)"> <span>(vale a partir deste mês)</span></div>' +
+    (e.temProx && porSetor.length ? '<div class="rm-insight">Saídas por setor: ' + porSetor.map(([n, q]) => '<b>' + vlEsc(n) + '</b> ' + q).join(' · ') + '.</div>' : '') +
+    (e.saiu.length ? '<details class="rm-details"><summary>Quem saiu (' + e.saiu.length + ')</summary>' + lista(e.saiu) + '</details>' : '') +
+    (e.entrou.length ? '<details class="rm-details"><summary>Quem entrou (' + e.entrou.length + ')</summary>' + lista(e.entrou) + '</details>' : '') +
+  '</div>';
+}
+
+async function rmSalvarSalario(v) {
+  const n = Number(v);
+  if (!(n > 0)) { mostrarToast('Informe um salário válido.', 'erro'); return; }
+  const { error } = await sb.from('relatorio_mensal_dados').upsert({ mes_ref: estado.rmDados.mes, tipo: 'config', dados: { salario_medio: n }, enviado_por_nome: estado.usuario ? estado.usuario.nome : null, atualizado_em: new Date().toISOString() });
+  if (error) { mostrarToast('Não consegui salvar: ' + error.message, 'erro'); return; }
+  estado.rmDados.salario = n;
+  renderizarRelatorioMensal();
+  mostrarToast('Salário médio atualizado.');
+}
+
+// ---------- importação dos arquivos do mês ----------
+// Aceita vários arquivos de uma vez e descobre sozinho o que é cada um:
+// PDF "Meta Venda Loja"; planilhas FlashHoraVO (hora), FlashPdvVO (PDV) e
+// ResumoVendaFinalizadoraVO (formas de pagamento).
+async function rmLerPdfMetas(file) {
+  if (!window.pdfjsLib) throw new Error('o leitor de PDF não carregou');
+  const paginas = await extrairLinhasFormularioCD(file);
+  const re = /^(\d{4})\s+(.+?)\s+([\d.]+,\d{2})\s+([\d.]+,\d{2})\s+(-?[\d.]+,\d{2})\s*%\s+(-?[\d.]+,\d{2})/;
+  const setores = [];
+  let total = null, periodo = null, mes = null;
+  for (const linhas of paginas) for (const l of linhas) {
+    const p = l.match(/(\d{2})\/(\d{2})\/(\d{4})\s*\S{0,6}\s*(\d{2})\/(\d{2})\/(\d{4})/);
+    if (!periodo && p && /Per[ií]odo/i.test(l)) { periodo = p[1] + '/' + p[2] + '/' + p[3] + ' a ' + p[4] + '/' + p[5] + '/' + p[6]; mes = p[3] + '-' + p[2]; }
+    const t = l.match(/Total\.?:?\s*([\d.]+,\d{2})\s+([\d.]+,\d{2})/);
+    if (t) total = { meta: rmBrNum(t[1]), venda: rmBrNum(t[2]) };
+    const m = l.match(re);
+    if (m) setores.push({ cod: m[1], nome: m[2].trim(), meta: rmBrNum(m[3]), venda: rmBrNum(m[4]), desvio: rmBrNum(m[5]), margem_obj: rmBrNum(m[6]) });
+  }
+  if (!setores.length) throw new Error('não achei a tabela de metas por setor nesse PDF');
+  if (!total) total = { meta: setores.reduce((a, s) => a + s.meta, 0), venda: setores.reduce((a, s) => a + s.venda, 0) };
+  return { tipo: 'metas', mes, dados: { setores, total, periodo } };
+}
+
+function rmMesDoNome(nome, anoPadrao) {
+  // "..._01-10_ate_31-10.xlsx" → mês 10
+  const m = String(nome).match(/(\d{2})-(\d{2})(?:-(\d{4}))?_ate_(\d{2})-(\d{2})/i);
+  if (!m) return null;
+  return (m[3] || anoPadrao) + '-' + m[5];
+}
+
+async function rmLerPlanilha(file) {
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const linhas = XLSX.utils.sheet_to_json(ws, { defval: null });
+  if (!linhas.length) throw new Error('planilha vazia');
+  const cols = Object.keys(linhas[0]);
+  const n = (v) => (v == null || v === '' ? 0 : typeof v === 'number' ? v : Number(String(v).replace(/\./g, '').replace(',', '.')) || Number(v) || 0);
+  if (cols.includes('numeroPdv')) {
+    const por = {};
+    linhas.forEach((r) => {
+      const k = n(r.numeroPdv); if (!k) return;
+      const p = por[k] = por[k] || { pdv: k, total: 0, clientes: 0, formas: {} };
+      p.total += n(r.totalFinalizadora); p.clientes += n(r.numeroCliente);
+      const f = r.descFinalizadora || 'OUTROS';
+      p.formas[f] = Math.round(((p.formas[f] || 0) + n(r.totalFinalizadora)) * 100) / 100;
+    });
+    return { tipo: 'pdv', dados: { pdvs: Object.values(por).map((p) => Object.assign(p, { total: Math.round(p.total * 100) / 100 })) } };
+  }
+  if (cols.includes('hora') && cols.includes('totalHora')) {
+    return { tipo: 'hora', dados: { horas: linhas.filter((r) => r.hora != null).map((r) => ({ hora: String(r.hora).slice(0, 5), clientes: n(r.numeroClientes), total: n(r.totalHora) })) } };
+  }
+  if (cols.includes('descFinalizadora') && cols.includes('totalFinalizadora')) {
+    let mes = null;
+    const formas = {};
+    linhas.forEach((r) => {
+      const k = r.descFinalizadora; if (!k) return;
+      const f = formas[k] = formas[k] || { cod: n(r.codFinalizadora), nome: k, qtd: 0, total: 0 };
+      f.qtd += n(r.qtdFinalizadora); f.total += n(r.totalFinalizadora);
+      if (!mes && r.dataVenda instanceof Date) mes = r.dataVenda.getFullYear() + '-' + String(r.dataVenda.getMonth() + 1).padStart(2, '0');
+    });
+    return { tipo: 'pagamento', mes, dados: { formas: Object.values(formas).map((f) => Object.assign(f, { total: Math.round(f.total * 100) / 100 })) } };
+  }
+  throw new Error('não reconheci essa planilha (esperava venda por PDV, por hora ou por finalizadora)');
+}
+
+async function rmImportar(input) {
+  const arquivos = [...(input.files || [])];
+  input.value = '';
+  if (!arquivos.length) return;
+  mostrarToast('Lendo ' + arquivos.length + ' arquivo(s)…');
+  const lidos = [], erros = [];
+  for (const f of arquivos) {
+    try {
+      const r = /\.pdf$/i.test(f.name) ? await rmLerPdfMetas(f) : await rmLerPlanilha(f);
+      r.arquivo = f.name;
+      lidos.push(r);
+    } catch (e) { erros.push(f.name + ': ' + (e.message || e)); }
+  }
+  if (!lidos.length) { mostrarToast('Nenhum arquivo foi lido. ' + erros.join(' | '), 'erro'); return; }
+  // mês: o do PDF manda; senão o que der pra tirar do arquivo; senão o mês aberto
+  const ano = estado.rm.mes.slice(0, 4);
+  const mesPdf = (lidos.find((r) => r.mes) || {}).mes;
+  const mesArquivo = lidos.map((r) => rmMesDoNome(r.arquivo, ano)).find(Boolean);
+  const mes = mesPdf || mesArquivo || estado.rm.mes;
+  const linhas = lidos.map((r) => ({ mes_ref: mes, tipo: r.tipo, dados: r.dados, arquivo: r.arquivo, enviado_por_nome: estado.usuario ? estado.usuario.nome : null, atualizado_em: new Date().toISOString() }));
+  const { error } = await sb.from('relatorio_mensal_dados').upsert(linhas);
+  if (error) { mostrarToast('Não consegui salvar: ' + error.message, 'erro'); return; }
+  const nomes = { metas: 'metas', pdv: 'PDV', hora: 'hora', pagamento: 'pagamentos' };
+  mostrarToast('Relatório de ' + rmMesTexto(mes) + ' atualizado: ' + lidos.map((r) => nomes[r.tipo]).join(', ') + (erros.length ? '. Não li: ' + erros.join(' | ') : '.'), erros.length ? 'erro' : '');
+  estado.rm.mes = mes;
+  await paginaRelatorioMensal();
+}
+
 
 function abrirModal(titulo, corpoHtml, textoBotao, aoSalvar) {
   fecharModal();
