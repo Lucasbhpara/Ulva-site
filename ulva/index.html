@@ -6111,7 +6111,8 @@ async function paginaEstoqueJornal() {
   estado.ejCampanhas = data || [];
   if (!estado.ej.campanhaId || !estado.ejCampanhas.some((c) => c.id === estado.ej.campanhaId)) {
     const hoje = ejHoje();
-    const atual = estado.ejCampanhas.find((c) => c.inicio <= hoje && c.fim >= hoje) || estado.ejCampanhas[0];
+    const folheto = estado.ejCampanhas.filter((c) => (c.tipo || 'folheto') === 'folheto');
+    const atual = folheto.find((c) => c.inicio <= hoje && c.fim >= hoje) || folheto[0] || estado.ejCampanhas[0];
     estado.ej.campanhaId = atual ? atual.id : null;
   }
   await ejCarregarItens();
@@ -12619,7 +12620,7 @@ async function cjCampanhaDoJornal(j) {
   if (ligada.error) throw ligada.error;
   if (ligada.data && ligada.data.length) return ligada.data[0];
   const p = cjPeriodoDoNome(j.nome_arquivo, j.enviado_em);
-  const mesma = await sb.from('jornal_campanhas').select(sel).eq('inicio', p.inicio).is('jornal_oferta_id', null).limit(1);
+  const mesma = await sb.from('jornal_campanhas').select(sel).eq('inicio', p.inicio).eq('tipo', 'folheto').is('jornal_oferta_id', null).limit(1);
   if (mesma.data && mesma.data.length) {
     await sb.from('jornal_campanhas').update({ jornal_oferta_id: j.id }).eq('id', mesma.data[0].id);
     return mesma.data[0];
