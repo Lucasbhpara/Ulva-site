@@ -12485,9 +12485,14 @@ const cx = (i) => i.x + i.w / 2;
 const cy = (i) => i.y + i.h / 2;
 const RE_PRECO = /(\d{1,3}(?:\.\d{3})*),(\d{2})/;
 const ehPreco = (t) => /^\s*(r\$\s*)?\d{1,3}(\.\d{3})*,\d{2}\s*$/i.test(t);
+const RE_COD = /^(\d{5,7}(?:\s*\/\s*\d{5,7})*)(?:\s|$)/;
+const codigosDe = (t) => {
+  const m = t.trim().match(RE_COD);
+  return m ? m[1].split("/").map((x) => x.trim()) : [];
+};
 const codigoDe = (t) => {
-  const m = t.trim().match(/^(\d{5,7})(?:\s|$)/);
-  return m ? m[1] : null;
+  var _a;
+  return (_a = codigosDe(t)[0]) != null ? _a : null;
 };
 const ehCodigo = (t) => codigoDe(t) !== null;
 const ehPor = (t) => /^por:?$/i.test(t.trim());
@@ -12550,7 +12555,7 @@ function lerPagina(itens, pagina, anterior) {
       });
       const cod = itens.filter((i) => dentro(i) && cy(i) > cy(p) && cy(i) < cy(p) + alt * 0.5 && ehCodigo(i.t)).sort((a, b) => a.y - b.y)[0];
       const descricao = juntar(nome);
-      if (descricao || cod) saida.push({ pagina, descricao, preco, codigo: cod ? codigoDe(cod.t) : null, x: Math.min(1, p.x + larg / 2), y: Math.max(0, cy(p) - alt * 0.35) });
+      if (descricao || cod) saida.push({ pagina, descricao, preco, codigo: cod ? codigoDe(cod.t) : null, outrosCodigos: cod ? codigosDe(cod.t).slice(1) : [], x: Math.min(1, p.x + larg / 2), y: Math.max(0, cy(p) - alt * 0.35) });
     }
     return saida;
   }
@@ -12567,7 +12572,7 @@ function lerPagina(itens, pagina, anterior) {
         h = i.h;
       }
     });
-    saida.push({ pagina, descricao: juntar(nome), preco, codigo: codigoDe(k.t), x: kx, y: ky - 0.04 });
+    saida.push({ pagina, descricao: juntar(nome), preco, codigo: codigoDe(k.t), outrosCodigos: codigosDe(k.t).slice(1), x: kx, y: ky - 0.04 });
   }
   return saida;
 }
@@ -12715,13 +12720,14 @@ async function cjLerJornal(silencioso) {
       if (upd.descricao || upd.codigo) corrigidos++;
     }
     if (l.codigo) paraLigar.push({ id: e.id, codigo: l.codigo });
+    (l.outrosCodigos || []).forEach((c) => paraLigar.push({ id: e.id, codigo: c }));
   }
   let ordem = existentes.reduce((m, e) => Math.max(m, e.ordem || 0), 0);
   const linhas = novos.map((l) => ({ campanha_id: campId, ordem: ++ordem, descricao: l.descricao || ('Código ' + l.codigo), preco: l.preco, codigo: l.codigo, pagina: l.pagina, pos_x: l.x, pos_y: l.y }));
   for (let i = 0; i < linhas.length; i += 200) {
     const { data, error } = await sb.from('jornal_itens').insert(linhas.slice(i, i + 200)).select('id, codigo');
     if (error) throw error;
-    (data || []).forEach((c) => { if (c.codigo) paraLigar.push({ id: c.id, codigo: c.codigo }); });
+    (data || []).forEach((c, k) => { if (c.codigo) paraLigar.push({ id: c.id, codigo: c.codigo }); ((novos[i + k] || {}).outrosCodigos || []).forEach((o) => paraLigar.push({ id: c.id, codigo: o })); });
   }
   if (paraLigar.length) {
     const { data: est } = await sb.from('estoque_loja_itens').select('codigo_interno, produto').in('codigo_interno', [...new Set(paraLigar.map((c) => c.codigo))]);
