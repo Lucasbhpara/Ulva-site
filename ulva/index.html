@@ -12481,11 +12481,15 @@ const cx = (i) => i.x + i.w / 2;
 const cy = (i) => i.y + i.h / 2;
 const RE_PRECO = /(\d{1,3}(?:\.\d{3})*),(\d{2})/;
 const ehPreco = (t) => /^\s*(r\$\s*)?\d{1,3}(\.\d{3})*,\d{2}\s*$/i.test(t);
-const ehCodigo = (t) => /^\d{5,7}$/.test(t.trim());
+const codigoDe = (t) => {
+  const m = t.trim().match(/^(\d{5,7})(?:\s|$)/);
+  return m ? m[1] : null;
+};
+const ehCodigo = (t) => codigoDe(t) !== null;
 const ehPor = (t) => /^por:?$/i.test(t.trim());
 const ehLixo = (t) => {
   const s = t.trim();
-  return !s || /^r\$$/i.test(s) || /^[\d.,]+$/.test(s) || /^(de|por):?$/i.test(s) || /^\d+\s*itens$/i.test(s);
+  return !s || /^r\$$/i.test(s) || /^[\d.,\s]+$/.test(s) || /^(de|por):?$/i.test(s) || /^\d+\s*itens$/i.test(s);
 };
 const precoNum = (t) => {
   const m = t.match(RE_PRECO);
@@ -12504,22 +12508,34 @@ function juntar(linhas) {
     return true;
   }).sort((a, b) => Math.abs(a.y - b.y) > 6e-3 ? a.y - b.y : a.x - b.x).map((i) => i.t.trim()).join(" ").replace(/\s+/g, " ").trim();
 }
-function lerPagina(itens, pagina) {
+function gradeDaPagina(itens) {
   const pors = itens.filter((i) => ehPor(i.t));
+  if (!pors.length) return null;
+  const linhas = [];
+  [...pors].sort((a, b) => a.y - b.y).forEach((p) => {
+    const l = linhas.find((g) => Math.abs(g[0].y - p.y) < 0.01);
+    l ? l.push(p) : linhas.push([p]);
+  });
+  linhas.forEach((l) => l.sort((a, b) => a.x - b.x));
+  const larg = mediana(linhas.flatMap((l) => l.slice(1).map((p, k) => p.x - l[k].x)), 0.22);
+  const alt = mediana(linhas.slice(1).map((l, k) => l[0].y - linhas[k][0].y), 0.1);
+  return { pors, larg, alt, ultimaLinhaCy: cy(linhas[linhas.length - 1][0]) };
+}
+function lerPagina(itens, pagina, anterior) {
+  const g = gradeDaPagina(itens);
   const saida = [];
-  if (pors.length) {
-    const linhas = [];
-    [...pors].sort((a, b) => a.y - b.y).forEach((p) => {
-      const l = linhas.find((g) => Math.abs(g[0].y - p.y) < 0.01);
-      l ? l.push(p) : linhas.push([p]);
-    });
-    linhas.forEach((l) => l.sort((a, b) => a.x - b.x));
-    const larg = mediana(linhas.flatMap((l) => l.slice(1).map((p, k) => p.x - l[k].x)), 0.22);
-    const alt = mediana(linhas.slice(1).map((l, k) => l[0].y - linhas[k][0].y), 0.1);
+  if (g) {
+    const { pors, larg, alt } = g;
     for (const p of pors) {
       const x1 = p.x - 0.012, x2 = p.x + larg - 0.012;
       const dentro = (i) => cx(i) > x1 && cx(i) < x2;
-      const nome = itens.filter((i) => dentro(i) && cy(i) < cy(p) - 6e-3 && cy(i) > cy(p) - alt * 0.82);
+      const topoNome = cy(p) - alt * 0.82;
+      let nome = itens.filter((i) => dentro(i) && cy(i) < cy(p) - 6e-3 && cy(i) > topoNome);
+      if (topoNome < 0.02 && anterior) {
+        const limite = anterior.grade ? anterior.grade.ultimaLinhaCy + anterior.grade.alt * 0.3 : 0.85;
+        const pe = anterior.itens.filter((i) => dentro(i) && cy(i) > limite && cy(i) > 1 + topoNome - 0.03);
+        nome = [...pe.map((i) => ({ ...i, y: i.y - 1 })), ...nome];
+      }
       let preco = null, h = 0;
       itens.filter((i) => dentro(i) && Math.abs(cy(i) - cy(p)) < 0.014 && ehPreco(i.t)).forEach((i) => {
         if (i.h > h * 1.05) {
@@ -12527,9 +12543,9 @@ function lerPagina(itens, pagina) {
           h = i.h;
         }
       });
-      const cod = itens.filter((i) => dentro(i) && cy(i) > cy(p) && cy(i) < cy(p) + alt * 0.4 && ehCodigo(i.t)).sort((a, b) => a.y - b.y)[0];
+      const cod = itens.filter((i) => dentro(i) && cy(i) > cy(p) && cy(i) < cy(p) + alt * 0.5 && ehCodigo(i.t)).sort((a, b) => a.y - b.y)[0];
       const descricao = juntar(nome);
-      if (descricao || cod) saida.push({ pagina, descricao, preco, codigo: cod ? cod.t.trim() : null, x: Math.min(1, p.x + larg / 2), y: Math.max(0, cy(p) - alt * 0.35) });
+      if (descricao || cod) saida.push({ pagina, descricao, preco, codigo: cod ? codigoDe(cod.t) : null, x: Math.min(1, p.x + larg / 2), y: Math.max(0, cy(p) - alt * 0.35) });
     }
     return saida;
   }
@@ -12546,12 +12562,16 @@ function lerPagina(itens, pagina) {
         h = i.h;
       }
     });
-    saida.push({ pagina, descricao: juntar(nome), preco, codigo: k.t.trim(), x: kx, y: ky - 0.04 });
+    saida.push({ pagina, descricao: juntar(nome), preco, codigo: codigoDe(k.t), x: kx, y: ky - 0.04 });
   }
   return saida;
 }
 function lerItensDoJornal(paginas) {
-  const todos = paginas.flatMap((p, i) => lerPagina(p, i + 1));
+  const todos = [];
+  paginas.forEach((p, i) => {
+    const ant = i > 0 ? { itens: paginas[i - 1], grade: gradeDaPagina(paginas[i - 1]) } : null;
+    todos.push(...lerPagina(p, i + 1, ant));
+  });
   const vistos = /* @__PURE__ */ new Set();
   return todos.filter((i) => {
     const k = i.codigo ? "c" + i.codigo : "n" + i.descricao.toUpperCase() + "|" + i.preco;
@@ -12560,7 +12580,8 @@ function lerItensDoJornal(paginas) {
     return true;
   });
 }
-  return lerItensDoJornal;
+
+return lerItensDoJornal;
 })();
 
 // =============================================================================
@@ -12660,32 +12681,85 @@ async function cjLerJornal(silencioso) {
     }));
   }
   const lidos = cjLerItensDoJornal(paginas);
-  const existentes = estado.cjItens || [];
-  const codigos = new Set(existentes.map((e) => e.codigo).filter(Boolean));
-  const nomes = new Set(existentes.map((e) => cjNormal(e.descricao)));
-  const novos = lidos.filter((l) => (l.codigo ? !codigos.has(l.codigo) : true) && !nomes.has(cjNormal(l.descricao)) && (l.descricao || l.codigo));
-  if (!novos.length) {
-    if (!silencioso) mostrarToast(lidos.length ? 'Todos os itens do jornal já estão na lista.' : 'Não achei os itens no texto do PDF.', lidos.length ? '' : 'erro');
-    return;
+  const campId = estado.cjCampanha.id, por = estado.usuario ? estado.usuario.nome : null;
+  // Junta com o que já existe: mesmo código, ou mesma página/posição → corrige
+  // o nome (célula cortada na virada da página) e completa o código.
+  const { data: atual, error: e0 } = await sb.from('jornal_itens').select('id, ordem, descricao, codigo, pagina, pos_x, pos_y').eq('campanha_id', campId);
+  if (e0) throw e0;
+  const existentes = atual || [];
+  const usados = new Set();
+  const achar = (l) =>
+    existentes.find((e) => !usados.has(e.id) && l.codigo && e.codigo === l.codigo) ||
+    existentes.find((e) => !usados.has(e.id) && e.pagina === l.pagina && e.pos_x != null && Math.abs(Number(e.pos_x) - l.x) < 0.03 && Math.abs(Number(e.pos_y) - l.y) < 0.03) ||
+    existentes.find((e) => !usados.has(e.id) && l.descricao && cjNormal(e.descricao) === cjNormal(l.descricao));
+  const novos = [], paraLigar = [];
+  let corrigidos = 0;
+  for (const l of lidos) {
+    if (!l.descricao && !l.codigo) continue;
+    const e = achar(l);
+    if (!e) { novos.push(l); continue; }
+    usados.add(e.id);
+    const upd = {};
+    const velho = cjNormal(e.descricao), novo = cjNormal(l.descricao);
+    if (novo && novo !== velho && novo.length > velho.length && novo.includes(velho)) upd.descricao = l.descricao;
+    if (!e.codigo && l.codigo) upd.codigo = l.codigo;
+    if (e.pagina == null) { upd.pagina = l.pagina; upd.pos_x = l.x; upd.pos_y = l.y; }
+    if (Object.keys(upd).length) {
+      const { error } = await sb.from('jornal_itens').update(upd).eq('id', e.id);
+      if (error) throw error;
+      if (upd.descricao || upd.codigo) corrigidos++;
+    }
+    if (l.codigo) paraLigar.push({ id: e.id, codigo: l.codigo });
   }
   let ordem = existentes.reduce((m, e) => Math.max(m, e.ordem || 0), 0);
-  const linhas = novos.map((l) => ({ campanha_id: estado.cjCampanha.id, ordem: ++ordem, descricao: l.descricao || ('Código ' + l.codigo), preco: l.preco, codigo: l.codigo, pagina: l.pagina, pos_x: l.x, pos_y: l.y }));
-  const criados = [];
+  const linhas = novos.map((l) => ({ campanha_id: campId, ordem: ++ordem, descricao: l.descricao || ('Código ' + l.codigo), preco: l.preco, codigo: l.codigo, pagina: l.pagina, pos_x: l.x, pos_y: l.y }));
   for (let i = 0; i < linhas.length; i += 200) {
     const { data, error } = await sb.from('jornal_itens').insert(linhas.slice(i, i + 200)).select('id, codigo');
     if (error) throw error;
-    criados.push(...(data || []));
+    (data || []).forEach((c) => { if (c.codigo) paraLigar.push({ id: c.id, codigo: c.codigo }); });
   }
-  const comCod = criados.filter((c) => c.codigo);
-  if (comCod.length) {
-    const { data: est } = await sb.from('estoque_loja_itens').select('codigo_interno, produto').in('codigo_interno', comCod.map((c) => c.codigo));
+  if (paraLigar.length) {
+    const { data: est } = await sb.from('estoque_loja_itens').select('codigo_interno, produto').in('codigo_interno', [...new Set(paraLigar.map((c) => c.codigo))]);
     const nome = {};
     (est || []).forEach((e) => { nome[String(e.codigo_interno)] = e.produto; });
-    const links = comCod.filter((c) => nome[c.codigo]).map((c) => ({ item_id: c.id, codigo: c.codigo, produto: nome[c.codigo], origem: 'auto', criado_por: estado.usuario ? estado.usuario.nome : null }));
-    if (links.length) await sb.from('jornal_item_produtos').upsert(links, { onConflict: 'item_id,produto' });
+    const links = paraLigar.filter((c) => nome[c.codigo]).map((c) => ({ item_id: c.id, codigo: c.codigo, produto: nome[c.codigo], origem: 'auto', criado_por: por }));
+    if (links.length) await sb.from('jornal_item_produtos').upsert(links, { onConflict: 'item_id,produto', ignoreDuplicates: true });
   }
+  const juntados = await cjJuntarRepetidos(campId);
   await cjCarregar();
-  if (!silencioso) mostrarToast(criados.length + ' itens novos do jornal.');
+  if (!lidos.length) { if (!silencioso) mostrarToast('Não achei os itens no texto do PDF.', 'erro'); return; }
+  const partes = [];
+  if (corrigidos) partes.push(corrigidos + ' nome(s)/código(s) corrigido(s)');
+  if (juntados) partes.push(juntados + ' repetido(s) juntado(s)');
+  if (linhas.length) partes.push(linhas.length + ' item(ns) novo(s)');
+  if (partes.length) mostrarToast(partes.join(' · ') + '.');
+  else if (!silencioso) mostrarToast('Todos os itens do jornal já estão na lista.');
+}
+
+// Itens repetidos (mesmo nome e preço): fica um (de preferência o que tem
+// página), os produtos dos outros passam para ele e os repetidos saem.
+async function cjJuntarRepetidos(campId) {
+  const { data, error } = await sb.from('jornal_itens').select('id, ordem, descricao, preco, pagina, conf_status, conf_por, conf_em').eq('campanha_id', campId).order('ordem');
+  if (error) throw error;
+  const grupos = {};
+  (data || []).forEach((i) => { const k = cjNormal(i.descricao) + '|' + (i.preco == null ? '' : Number(i.preco).toFixed(2)); (grupos[k] = grupos[k] || []).push(i); });
+  let juntados = 0;
+  for (const lista of Object.values(grupos)) {
+    if (lista.length < 2) continue;
+    const fica = lista.find((i) => i.pagina != null) || lista[0];
+    const saem = lista.filter((i) => i.id !== fica.id);
+    const { data: links } = await sb.from('jornal_item_produtos').select('codigo, produto, origem, criado_por').in('item_id', saem.map((i) => i.id));
+    if (links && links.length) {
+      const { error: e1 } = await sb.from('jornal_item_produtos').upsert(links.map((l) => ({ item_id: fica.id, codigo: l.codigo, produto: l.produto, origem: l.origem, criado_por: l.criado_por })), { onConflict: 'item_id,produto', ignoreDuplicates: true });
+      if (e1) throw e1;
+    }
+    const comStatus = !fica.conf_status ? saem.find((i) => i.conf_status) : null;
+    if (comStatus) await sb.from('jornal_itens').update({ conf_status: comStatus.conf_status, conf_por: comStatus.conf_por, conf_em: comStatus.conf_em }).eq('id', fica.id);
+    const { error: e2 } = await sb.from('jornal_itens').delete().in('id', saem.map((i) => i.id));
+    if (e2) throw e2;
+    juntados += saem.length;
+  }
+  return juntados;
 }
 
 function cjRenderizar() {
@@ -12797,10 +12871,10 @@ function cjHtmlGaveta(i) {
     '<input class="input-busca" id="cj-termo" style="max-width:420px;" placeholder="Buscar (ex.: omo 3l)" value="' + giroEsc(f.termo || '') + '">' +
     (disp.length > 1 ? ' <label style="margin-left:12px;font-weight:700;cursor:pointer;"><input type="checkbox"' + (todos ? ' checked' : '') + ' onchange="cjMarcarTodos(this.checked)"> Marcar todos (' + disp.length + ')</label>' : '') +
     '<div style="margin-top:8px;max-height:320px;overflow:auto;">' +
-    f.resultados.map((p) => {
+    f.resultados.map((p, idx) => {
       const ja = jaLigado(p), m = f.marcados.has(chave(p));
       return '<label style="display:flex;gap:10px;align-items:center;padding:6px 4px;border-radius:8px;cursor:' + (ja ? 'default' : 'pointer') + ';' + (m ? 'background:var(--accent-soft);' : '') + '">' +
-        '<input type="checkbox"' + (ja ? ' checked disabled' : m ? ' checked' : '') + ' onchange="cjAlternar(\'' + giroEsc(chave(p)).replace(/'/g, '&#39;') + '\')">' +
+        '<input type="checkbox"' + (ja ? ' checked disabled' : m ? ' checked' : '') + ' onchange="cjAlternar(' + idx + ')">' +
         '<span style="flex:1;' + (ja ? 'color:var(--text-muted);' : '') + '">' + giroEsc(p.produto) + ' <span style="color:var(--text-muted);font-size:12px;">' + (p.codigo_interno ? 'cód. ' + giroEsc(p.codigo_interno) : '') + (ja ? ' · já ligado' : '') + '</span></span>' +
         '<b style="' + (Number(p.quantidade) <= 0 ? 'color:var(--red);' : '') + '">' + ejQtd(p.quantidade) + '</b></label>';
     }).join('') + '</div>' +
@@ -12832,9 +12906,10 @@ function cjAtualizarGaveta() {
   novo.addEventListener('input', (e) => cjBuscar(e.target.value));
   if (foco) { novo.focus(); if (pos != null) novo.setSelectionRange(pos, pos); }
 }
-function cjAlternar(k) {
-  const p = estado.cj.resultados.find((x) => (x.codigo_interno || x.produto) === k);
+function cjAlternar(idx) {
+  const p = estado.cj.resultados[idx];
   if (!p) return;
+  const k = p.codigo_interno || p.produto;
   estado.cj.marcados.has(k) ? estado.cj.marcados.delete(k) : estado.cj.marcados.set(k, p);
   cjAtualizarGaveta();
 }
