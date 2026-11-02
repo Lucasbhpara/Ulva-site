@@ -12967,7 +12967,7 @@ function msRenderizar() {
   const lista = subs.filter((x) => (f.filtro === 'sem' ? !x.area_id : true))
     .filter((x) => !t || [x.classe_2, x.classe_3, x.classe_4, ...(x.exemplos || [])].join(' ').toLowerCase().includes(t));
   const chip = (k, txt) => '<button class="pill' + (f.filtro === k ? ' admin' : '') + '" style="cursor:pointer;margin:0;" onclick="estado.ms.filtro=\'' + k + '\';msRenderizar()">' + txt + '</button>';
-  const opcoes = (sel) => '<option value="">— escolher corredor —</option>' + areas.map((a) => '<option value="' + a.id + '"' + (a.id === sel ? ' selected' : '') + '>' + giroEsc(a.nome) + '</option>').join('');
+  const opcoes = (sel) => '<option value="">— escolher corredor —</option><option value="__fora">🚫 Uso e consumo (esconder)</option>' + areas.map((a) => '<option value="' + a.id + '"' + (a.id === sel ? ' selected' : '') + '>' + giroEsc(a.nome) + '</option>').join('');
   let setorAnt = null;
   const linhas = lista.map((x) => {
     const idx = subs.indexOf(x);
@@ -12993,7 +12993,15 @@ function msRenderizar() {
 async function msSalvar(idx, areaId) {
   const x = estado.msSubs[idx];
   if (!x || !areaId) return;
-  const { error } = await sb.from('mapa_subsortimento').upsert({ classe_2: x.classe_2, classe_3: x.classe_3, classe_4: x.classe_4, mapa_area_id: areaId, definido_por: estado.usuario ? estado.usuario.nome : null, atualizado_em: new Date().toISOString() });
+  if (areaId === '__fora') {
+    const { error } = await sb.from('mapa_subsortimento').upsert({ classe_2: x.classe_2, classe_3: x.classe_3, classe_4: x.classe_4, mapa_area_id: null, fora_do_mapa: true, definido_por: estado.usuario ? estado.usuario.nome : null, atualizado_em: new Date().toISOString() });
+    if (error) { mostrarToast('Não consegui salvar: ' + error.message, 'erro'); return; }
+    estado.msSubs.splice(idx, 1);
+    mostrarToast(x.classe_4 + ' escondido (uso e consumo).');
+    setTimeout(msRenderizar, 400);
+    return;
+  }
+  const { error } = await sb.from('mapa_subsortimento').upsert({ classe_2: x.classe_2, classe_3: x.classe_3, classe_4: x.classe_4, mapa_area_id: areaId, fora_do_mapa: false, definido_por: estado.usuario ? estado.usuario.nome : null, atualizado_em: new Date().toISOString() });
   if (error) { mostrarToast('Não consegui salvar: ' + error.message, 'erro'); return; }
   x.area_id = areaId;
   const a = estado.msAreas.find((y) => y.id === areaId);
