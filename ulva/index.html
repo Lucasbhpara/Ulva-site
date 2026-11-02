@@ -989,6 +989,7 @@
         <button class="nav-item" data-pagina="checklist-setor" onclick="irPara('checklist-setor')"><span class="dot"></span>Checklist</button>
         <button class="nav-item" data-pagina="visita-tecnica" onclick="irPara('visita-tecnica')"><span class="dot"></span>Visita Técnica</button>
         <button class="nav-item" data-pagina="mapa-loja" onclick="irPara('mapa-loja')"><span class="dot"></span>Mapa da Loja</button>
+        <button class="nav-item" id="nav-mapear-subs" style="display:none" data-pagina="mapear-subs" onclick="irPara('mapear-subs')"><span class="dot"></span>Mapear sub-sortimentos</button>
         <button class="nav-item" data-pagina="pontas-extras" onclick="irPara('pontas-extras')"><span class="dot"></span>Pontas e Pontos Extras</button>
         <button class="nav-item" onclick="window.open('https://lucasbhpara.github.io/gestao-loja-app/estacao-etiquetas.html','_blank')"><span class="dot"></span>Estação de Etiquetas</button>
       </div>
@@ -1220,6 +1221,7 @@ async function fazerLogin() {
     document.getElementById('nav-venda-dia').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-relatorio-mensal').style.display = String(encontrado.matricula) === MATRICULA_RELATORIO_MENSAL ? '' : 'none';
     document.getElementById('nav-conferencia-jornal').style.display = String(encontrado.matricula) === '7990353' ? '' : 'none';
+    document.getElementById('nav-mapear-subs').style.display = String(encontrado.matricula) === '7990353' ? '' : 'none';
     document.getElementById('nav-importar-vendas').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-ruptura-mix').style.display = MATRICULAS_GIRO.includes(String(encontrado.matricula)) ? '' : 'none';
     document.getElementById('nav-visitas-site').style.display = String(encontrado.matricula) === '7990353' ? '' : 'none';
@@ -1254,7 +1256,7 @@ const GAVETA_POR_PAGINA = {
   avisos: 'avisos', ocorrencias: 'avisos',
   perdas: 'indicadores', validade: 'indicadores', vendas: 'indicadores', 'vendas-loja': 'indicadores', 'venda-dia': 'indicadores', 'relatorio-mensal': 'indicadores', 'vendas-comparativo': 'indicadores', 'giro-produtos': 'indicadores', 'importar-vendas': 'indicadores', 'painel-resultados': 'indicadores', 'resultados-inventario': 'indicadores', 'visitas-site': 'indicadores',
   conferencias: 'indicadores', inventario: 'indicadores', 'historico-exclusoes': 'indicadores',
-  pedidos: 'operacao', 'estoque-loja': 'operacao', 'ruptura-mix': 'operacao', 'uso-consumo': 'operacao', 'checklist-setor': 'operacao', 'visita-tecnica': 'operacao', 'mapa-loja': 'operacao', 'jornal-ofertas': 'ofertas', 'ofertas-whats': 'ofertas', 'estoque-jornal': 'ofertas', 'conferencia-jornal': 'ofertas', 'pesquisa-preco': 'ofertas', chegadas: 'ofertas', 'pontas-extras': 'operacao',
+  pedidos: 'operacao', 'estoque-loja': 'operacao', 'ruptura-mix': 'operacao', 'uso-consumo': 'operacao', 'checklist-setor': 'operacao', 'visita-tecnica': 'operacao', 'mapa-loja': 'operacao', 'mapear-subs': 'operacao', 'jornal-ofertas': 'ofertas', 'ofertas-whats': 'ofertas', 'estoque-jornal': 'ofertas', 'conferencia-jornal': 'ofertas', 'pesquisa-preco': 'ofertas', chegadas: 'ofertas', 'pontas-extras': 'operacao',
 };
 function alternarMenu(abrir) {
   const shell = document.getElementById('app-shell');
@@ -1315,6 +1317,7 @@ async function irPara(pagina) {
     else if (pagina === 'resultados-inventario') await paginaResultadosInventario();
     else if (pagina === 'acessos') await paginaAcessos();
     else if (pagina === 'mapa-loja') await paginaMapaLoja();
+    else if (pagina === 'mapear-subs' && estado.usuario && String(estado.usuario.matricula) === '7990353') await paginaMapearSubs();
     else if (pagina === 'pontas-extras') await paginaPontasExtras();
     else if (pagina === 'jornal-ofertas') await paginaJornalOfertas();
     else if (pagina === 'ofertas-whats') await paginaOfertasWhats();
@@ -12940,6 +12943,63 @@ async function cjTirar(linkId) {
   const id = estado.cj.aberto;
   estado.cj.aberto = null;
   await cjCarregar(); await cjAbrir(id);
+}
+
+
+// ------------------------------------------------ Mapear sub-sortimentos ----
+// Cada sub-sortimento (classe 2 › 3 › 4) ganha um corredor do mapa; vale para
+// todos os produtos dele sem local próprio (Ruptura, Busca produto, rota do
+// folheto). Só Lucas. Tabela mapa_subsortimento; função subsortimentos_mapa.
+async function paginaMapearSubs() {
+  estado.ms = estado.ms || { filtro: 'sem', busca: '' };
+  const el = document.getElementById('conteudo-principal');
+  el.innerHTML = cabecalho('Mapear sub-sortimentos', 'Diga em qual corredor fica cada sub-sortimento') + '<div class="carregando">Carregando…</div>';
+  const [subs, areas] = await Promise.all([sb.rpc('subsortimentos_mapa'), sb.from('mapa_areas').select('id, nome, tipo').order('nome')]);
+  if (subs.error || areas.error) { el.innerHTML = cabecalho('Mapear sub-sortimentos', '') + '<div class="celula-vazio">' + giroEsc((subs.error || areas.error).message) + '</div>'; return; }
+  estado.msSubs = subs.data || [];
+  estado.msAreas = areas.data || [];
+  msRenderizar();
+}
+function msRenderizar() {
+  const f = estado.ms, subs = estado.msSubs, areas = estado.msAreas;
+  const sem = subs.filter((x) => !x.area_id).length;
+  const t = (f.busca || '').trim().toLowerCase();
+  const lista = subs.filter((x) => (f.filtro === 'sem' ? !x.area_id : true))
+    .filter((x) => !t || [x.classe_2, x.classe_3, x.classe_4, ...(x.exemplos || [])].join(' ').toLowerCase().includes(t));
+  const chip = (k, txt) => '<button class="pill' + (f.filtro === k ? ' admin' : '') + '" style="cursor:pointer;margin:0;" onclick="estado.ms.filtro=\'' + k + '\';msRenderizar()">' + txt + '</button>';
+  const opcoes = (sel) => '<option value="">— escolher corredor —</option>' + areas.map((a) => '<option value="' + a.id + '"' + (a.id === sel ? ' selected' : '') + '>' + giroEsc(a.nome) + '</option>').join('');
+  let setorAnt = null;
+  const linhas = lista.map((x) => {
+    const idx = subs.indexOf(x);
+    let cab = '';
+    if (x.classe_2 !== setorAnt) { setorAnt = x.classe_2; cab = '<tr><td colspan="3" style="background:var(--bg-soft,#f4f6fa);font-weight:800;font-size:12px;text-transform:uppercase;color:var(--text-muted);">' + giroEsc(x.classe_2) + '</td></tr>'; }
+    return cab + '<tr>' +
+      '<td><div class="nome-forte">' + giroEsc(x.classe_3) + ' › ' + giroEsc(x.classe_4) + '</div><div style="font-size:12px;color:var(--text-muted);">' + x.produtos + ' produto' + (x.produtos === 1 ? '' : 's') + '</div></td>' +
+      '<td style="font-size:12.5px;">' + (x.exemplos || []).map((e) => '• ' + giroEsc(e)).join('<br>') + '</td>' +
+      '<td style="white-space:nowrap;"><select class="input-busca" style="min-width:220px;' + (x.area_id ? '' : 'border-color:var(--red);') + '" onchange="msSalvar(' + idx + ', this.value)">' + opcoes(x.area_id) + '</select></td></tr>';
+  }).join('');
+  document.getElementById('conteudo-principal').innerHTML = cabecalho('Mapear sub-sortimentos', 'Diga em qual corredor fica cada sub-sortimento') +
+    '<div class="resumo-perdas"><div class="box"><div class="rotulo">Sub-sortimentos</div><div class="valor">' + subs.length + '</div></div>' +
+    '<div class="box"><div class="rotulo">Com corredor</div><div class="valor" style="color:var(--green)">' + (subs.length - sem) + '</div></div>' +
+    '<div class="box"><div class="rotulo">Sem corredor</div><div class="valor" style="color:var(--red)">' + sem + '</div></div></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">' + chip('sem', 'Sem corredor (' + sem + ')') + chip('todos', 'Todos (' + subs.length + ')') +
+    '<input class="input-busca" id="ms-busca" style="max-width:300px;margin-left:auto;" placeholder="Buscar setor, sub ou produto" value="' + giroEsc(f.busca) + '"></div>' +
+    '<p style="font-size:12.5px;color:var(--text-muted);margin:0 0 10px;">Escolheu o corredor, já está salvo. Vale para todos os produtos do sub-sortimento que ainda não foram bipados num lugar próprio. Corredor que não existe? Crie em Mapa da Loja.</p>' +
+    '<div class="tabela-wrap"><table><thead><tr><th>Sub-sortimento</th><th>Exemplos (mais vendidos com estoque)</th><th>Corredor</th></tr></thead><tbody>' +
+    (linhas || '<tr><td colspan="3" class="celula-vazio">' + (f.filtro === 'sem' ? 'Todos os sub-sortimentos já têm corredor! 🎉' : 'Nada encontrado.') + '</td></tr>') + '</tbody></table></div>';
+  const b = document.getElementById('ms-busca');
+  b.addEventListener('input', (e) => { estado.ms.busca = e.target.value; const pos = e.target.selectionStart; msRenderizar(); const n = document.getElementById('ms-busca'); n.focus(); n.setSelectionRange(pos, pos); });
+}
+async function msSalvar(idx, areaId) {
+  const x = estado.msSubs[idx];
+  if (!x || !areaId) return;
+  const { error } = await sb.from('mapa_subsortimento').upsert({ classe_2: x.classe_2, classe_3: x.classe_3, classe_4: x.classe_4, mapa_area_id: areaId, definido_por: estado.usuario ? estado.usuario.nome : null, atualizado_em: new Date().toISOString() });
+  if (error) { mostrarToast('Não consegui salvar: ' + error.message, 'erro'); return; }
+  x.area_id = areaId;
+  const a = estado.msAreas.find((y) => y.id === areaId);
+  mostrarToast(x.classe_4 + ' → ' + (a ? a.nome : 'corredor') + '. Salvo.');
+  // na lista "Sem corredor" o item sai depois de um instante, para dar tempo de ver
+  if (estado.ms.filtro === 'sem') setTimeout(msRenderizar, 600); else msRenderizar();
 }
 
 function abrirModal(titulo, corpoHtml, textoBotao, aoSalvar) {
