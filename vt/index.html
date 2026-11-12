@@ -1009,7 +1009,7 @@ const ehResp = () => estado.perfil === 'responsavel';
 // ---------------------------------------------------------------- login
 function perfilDe(c) {
   const f = sem(c.funcao);
-  if (c.is_admin || /diretor|respons|coorden|sanitar|qualidade|supervisor/.test(f)) return 'responsavel';
+  if (c.is_admin || /diretor|respons|coorden|sanitar|qualidade/.test(f)) return 'responsavel';
   if (/veterin/.test(f)) return 'veterinario';
   return null;
 }
