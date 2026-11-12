@@ -903,6 +903,8 @@
   .obs-vt{font-size:12.5px;color:var(--text-secondary);margin-top:8px}.fotos-vt{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.fotos-vt img{width:180px;height:135px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
   .perg-vt{display:flex;align-items:center;gap:10px;margin-bottom:8px}.perg-vt.inativa{opacity:.5}.btn-acao.mini{padding:6px 12px;font-size:11.5px;white-space:nowrap}
   .form-linha{display:flex;gap:12px}.form-linha>div{flex:1}textarea.campo-input{resize:vertical;font-family:inherit}
+  .faixa-demo{position:fixed;top:0;left:0;right:0;z-index:2000;background:#F59E0B;color:#1F1300;font-weight:700;font-size:12.5px;text-align:center;padding:6px 10px}body:has(.faixa-demo) #app-shell{padding-top:30px}
+  .rotulo-loja{background:#fff;border:1px solid #D5DBE5;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:700;color:#0E1B2C;box-shadow:none}.rotulo-loja:before{display:none}
   .leaflet-popup-content{font-size:12.5px;line-height:1.5}
 
 </style>
@@ -925,7 +927,7 @@
     <label class="campo-label">Matrícula</label>
     <input class="campo-input" id="login-matricula" placeholder="Sua matrícula" autocomplete="off" />
     <button class="btn-primario" id="btn-entrar" onclick="entrar()">Entrar</button>
-    <div class="login-rodape">ULVA · Unified Live View App · by Lucas Alberto</div>
+    <div class="login-rodape"><a href="?demo" style="color:var(--accent);font-weight:700">Ver demonstração</a> · ULVA · Unified Live View App · by Lucas Alberto</div>
   </div>
   </div>
 </div>
@@ -970,7 +972,7 @@
 // =============================================================================
 const SUPABASE_URL = 'https://llstmcmgormolhbnszap.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Kk5u4REY7PUWKMpx9wlZnA_BXgfqrxF';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ASSINATURA = 'ULVA · Unified Live View App · by Lucas Alberto';
 const SETORES = [
   { key: 'acougue', nome: 'Açougue' }, { key: 'frios', nome: 'Frios' }, { key: 'padaria', nome: 'Padaria' },
@@ -1003,13 +1005,13 @@ function banda(pct) {
 function numeroDoc(v) { return v && v.numero != null ? 'VT-' + String(v.finalizada_em || v.iniciada_em || '').slice(0, 4) + '-' + String(v.numero).padStart(4, '0') : null; }
 function toast(msg, tipo) { const el = document.createElement('div'); el.className = 'toast ' + (tipo || ''); el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 4200); }
 function cabecalho(t, s, direita) { return '<div class="page-header"><div><h1>' + t + '</h1><p class="sub">' + s + '</p></div>' + (direita || '<span class="badge-conectado"><span class="dot"></span> Conectado</span>') + '</div>'; }
-function iniciais(n) { return String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join(''); }
+function iniciais(n) { return String(n || '?').replace(/[^A-Za-zÀ-ÿ\s]/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join(''); }
 const ehResp = () => estado.perfil === 'responsavel';
 
 // ---------------------------------------------------------------- login
 function perfilDe(c) {
   const f = sem(c.funcao);
-  if (c.is_admin || /diretor|respons|coorden|sanitar|qualidade/.test(f)) return 'responsavel';
+  if (c.is_admin || /diretor|respons|coorden|sanitar|qualidade|supervisor/.test(f)) return 'responsavel';
   if (/veterin/.test(f)) return 'veterinario';
   return null;
 }
@@ -1170,7 +1172,7 @@ async function desenharMapa(id, o) {
   Object.values(porLoja).forEach((v) => {
     const b = banda(Number(v.aproveitamento || 0));
     L.circleMarker([v.localizacao_lat, v.localizacao_lng], { radius: 8, color: '#fff', weight: 2, fillColor: b.cor, fillOpacity: 0.95 })
-      .bindPopup('<b>Loja ' + esc(v.unidade || '—') + '</b><br>Última visita: ' + esc(nomeSetor(v.setor)) + ' · ' + v.aproveitamento + '%<br>' + dataHora(v.finalizada_em) + '<br>' + esc(v.veterinario_nome)).addTo(m);
+      .bindTooltip('Loja ' + esc(v.unidade || '—'), { permanent: !o.compacto, direction: 'top', offset: [0, -8], className: 'rotulo-loja' }).bindPopup('<b>Loja ' + esc(v.unidade || '—') + '</b><br>Última visita: ' + esc(nomeSetor(v.setor)) + ' · ' + v.aproveitamento + '%<br>' + dataHora(v.finalizada_em) + '<br>' + esc(v.veterinario_nome)).addTo(m);
     pontos.push([v.localizacao_lat, v.localizacao_lng]);
   });
   // veterinários: última posição
@@ -1213,7 +1215,7 @@ async function paginaMapa() {
     // paradas = mudanças de loja no trajeto
     const tr = estado.trajeto || [], par = [];
     tr.forEach((x) => { const u = x.unidade || '—'; if (!par.length || par[par.length - 1].u !== u) par.push({ u, ini: x.registrado_em, fim: x.registrado_em }); else par[par.length - 1].fim = x.registrado_em; });
-    document.getElementById('paradas').innerHTML = par.length ? par.reverse().map((p) => '<div class="parada"><b>' + (p.u === '—' ? 'Sem loja informada' : 'Loja ' + esc(p.u)) + '</b><span>' + dataHora(p.ini) + ' → ' + dataCurta(p.fim) + ' ' + p2(new Date(p.fim).getHours()) + ':' + p2(new Date(p.fim).getMinutes()) + '</span></div>').join('') : 'Sem posições nesse período.';
+    document.getElementById('paradas').innerHTML = par.length ? par.reverse().map((p) => '<div class="parada"><b>' + (p.u === '—' ? 'Em deslocamento' : 'Loja ' + esc(p.u)) + '</b><span>' + dataHora(p.ini) + ' → ' + dataCurta(p.fim) + ' ' + p2(new Date(p.fim).getHours()) + ':' + p2(new Date(p.fim).getMinutes()) + '</span></div>').join('') : 'Sem posições nesse período.';
   }
 }
 
@@ -1244,6 +1246,8 @@ function planoAcao(d) {
 async function abrirVisita(id) {
   const main = document.getElementById('conteudo-principal');
   main.innerHTML = '<div class="celula-vazio">Abrindo visita…</div>';
+  if (mapaAtual) { mapaAtual.remove(); mapaAtual = null; }
+  document.querySelectorAll('.nav-item').forEach((el) => el.classList.toggle('ativo', el.dataset.pagina === 'visitas'));
   const d = await dadosVisita(id); estado.visitaAberta = d;
   const v = d.v, b = banda(Number(v.aproveitamento || 0));
   const perguntas = estado.perguntas.filter((p) => p.setor === v.setor);
@@ -1406,8 +1410,139 @@ async function paginaVeterinarios() {
 }
 
 document.getElementById('login-matricula').addEventListener('keydown', (e) => { if (e.key === 'Enter') entrar(); });
-restaurar();
+// ---------------------------------------------------------------- demonstração
+// ulva.com.br/vt?demo — tudo simulado no navegador (nada é gravado no banco).
+// As perguntas são as reais do ULVA; visitas, rotas e correções são fictícias.
+const MODO_DEMO = /[?&]demo\b/.test(location.search);
+async function iniciarDemo() {
+  const real = sb;
+  let perguntas = [];
+  try { perguntas = (await real.from('visita_tecnica_perguntas').select('*').eq('ativo', true).order('setor').order('ordem', { ascending: true })).data || []; } catch (e) {}
+  // gerador determinístico (mesma simulação toda vez)
+  let semente = 327;
+  const rnd = () => ((semente = (semente * 16807) % 2147483647) / 2147483647);
+  const escolhe = (l) => l[Math.floor(rnd() * l.length)];
+  const VETS = [{ m: '79735894', n: 'Guilherme' }, { m: 'D2', n: 'Mariana Duarte' }, { m: 'D3', n: 'Rafael Nogueira' }];
+  const LOJAS = [
+    ['327', 'Itatiaiuçu', -20.1987, -44.4207], ['296', 'Betim', -19.9678, -44.1983], ['301', 'Contagem', -19.9317, -44.0539],
+    ['312', 'Igarapé', -20.0707, -44.3020], ['318', 'Mateus Leme', -19.9864, -44.4291], ['340', 'Brumadinho', -20.1438, -44.2007],
+    ['355', 'Belo Horizonte', -19.9245, -43.9352], ['362', 'Sarzedo', -20.0369, -44.1446],
+  ];
+  const lojaVet = { '79735894': ['327', '312', '318', '340'], D2: ['296', '301', '362'], D3: ['355', '301', '296', '362'] };
+  const setores = SETORES.map((s) => s.key);
+  const hora = 3600e3, agora = Date.now();
+  const db = { visitas_tecnicas: [], visita_tecnica_respostas: [], tarefas: [], correcao_itens: [], localizacao_veterinario: [], veterinarios_posicao_atual: [], visita_tecnica_perguntas: perguntas };
+  const iso = (t) => new Date(t).toISOString();
+  // visitas dos últimos 90 dias
+  let num = 0, tid = 0;
+  for (let dia = 90; dia >= 0; dia--) {
+    const d = new Date(agora - dia * 24 * hora); if (d.getDay() === 0) continue;
+    VETS.forEach((v, iv) => {
+      if (rnd() < 0.35) return;
+      const u = escolhe(lojaVet[v.m]), loja = LOJAS.find((l) => l[0] === u);
+      const qtd = 1 + Math.floor(rnd() * 3);
+      for (let k = 0; k < qtd; k++) {
+        const setor = escolhe(setores);
+        const base = { '327': 84, '296': 76, '301': 69, '312': 88, '318': 72, '340': 80, '355': 64, '362': 78 }[u];
+        const pct = Math.max(42, Math.min(100, Math.round(base + (rnd() - 0.5) * 22 + (90 - dia) * 0.06)));
+        const pPos = (perguntas.filter((p) => p.setor === setor).length || 20) * 2;
+        const nc = Math.max(0, Math.round((100 - pct) / 100 * pPos / 2));
+        const crit = pct < 70 ? 1 + Math.floor(rnd() * 2) : rnd() < 0.15 ? 1 : 0;
+        const fim = new Date(d); fim.setHours(8 + iv + k * 2, Math.floor(rnd() * 59), 0, 0);
+        if (fim.getTime() > agora) continue;
+        num++;
+        const vis = { id: 'dv' + num, numero: num, setor, status: 'finalizada', unidade: u, veterinario_nome: v.n, veterinario_matricula: v.m, iniciada_em: iso(fim.getTime() - 50 * 60000), finalizada_em: iso(fim.getTime()), aproveitamento: pct, pontos_realizados: Math.round(pPos * pct / 100), pontos_possiveis: pPos, nao_conformidades: nc, criticos_nao_conformes: crit, localizacao_lat: loja[2] + (rnd() - 0.5) * 0.002, localizacao_lng: loja[3] + (rnd() - 0.5) * 0.002, localizacao_endereco: 'Supermercados BH · ' + loja[1], tarefa_id: null, consideracoes_finais: pct < 70 ? 'Reforçar treinamento da equipe e acompanhar as correções nos próximos 7 dias.' : null };
+        if (nc > 0) {
+          tid++; vis.tarefa_id = 'dt' + tid;
+          const idade = (agora - fim.getTime()) / (24 * hora);
+          const st = idade > 20 ? 'aprovada' : idade > 8 ? (rnd() < 0.7 ? 'aprovada' : 'enviada') : idade > 3 ? escolhe(['enviada', 'pendente', 'devolvida']) : 'pendente';
+          const prazo = new Date(fim.getTime() + 7 * 24 * hora).toISOString().slice(0, 10);
+          db.tarefas.push({ id: vis.tarefa_id, prazo, correcao_status: st, concluida: st === 'aprovada', correcao_enviada_por: st !== 'pendente' ? escolhe(['Carlos', 'Juliana', 'Marcos', 'Patrícia']) : null, concluida_por_nome: null });
+        }
+        db.visitas_tecnicas.push(vis);
+      }
+    });
+  }
+  db.visitas_tecnicas.sort((a, b) => b.finalizada_em.localeCompare(a.finalizada_em));
+  // rotas: posições a cada ~10 min nos dias úteis dos últimos 7 dias
+  VETS.forEach((v, iv) => {
+    for (let dia = 7; dia >= 0; dia--) {
+      const d = new Date(agora - dia * 24 * hora); if (d.getDay() === 0) continue;
+      const rota = [escolhe(lojaVet[v.m]), escolhe(lojaVet[v.m]), escolhe(lojaVet[v.m])];
+      let t = new Date(d); t.setHours(7, 30 + iv * 10, 0, 0);
+      let pos = LOJAS.find((l) => l[0] === rota[0]);
+      for (let i = 0; i < rota.length; i++) {
+        const alvo = LOJAS.find((l) => l[0] === rota[i]);
+        // deslocamento até a loja
+        for (let s = 1; s <= 4; s++) {
+          if (t.getTime() > agora) break;
+          const f = s / 4;
+          db.localizacao_veterinario.push({ matricula: v.m, nome: v.n, lat: pos[2] + (alvo[2] - pos[2]) * f + (rnd() - 0.5) * 0.01, lng: pos[3] + (alvo[3] - pos[3]) * f + (rnd() - 0.5) * 0.01, unidade: s === 4 ? alvo[0] : null, registrado_em: iso(t.getTime()) });
+          t = new Date(t.getTime() + 10 * 60000);
+        }
+        // parado na loja ~2h
+        for (let s = 0; s < 12 && t.getTime() <= agora; s++) {
+          db.localizacao_veterinario.push({ matricula: v.m, nome: v.n, lat: alvo[2] + (rnd() - 0.5) * 0.0008, lng: alvo[3] + (rnd() - 0.5) * 0.0008, unidade: alvo[0], registrado_em: iso(t.getTime()) });
+          t = new Date(t.getTime() + 10 * 60000);
+        }
+        pos = alvo;
+      }
+    }
+  });
+  // agora: Guilherme visitando a 327, Mariana a caminho, Rafael sem sinal há 4 h
+  const g = LOJAS[0];
+  db.localizacao_veterinario.push({ matricula: '79735894', nome: 'Guilherme', lat: g[2], lng: g[3], unidade: '327', registrado_em: iso(agora - 3 * 60000) });
+  db.localizacao_veterinario.push({ matricula: 'D2', nome: 'Mariana Duarte', lat: -19.952, lng: -44.12, unidade: null, registrado_em: iso(agora - 8 * 60000) });
+  db.localizacao_veterinario = db.localizacao_veterinario.filter((x) => !(x.matricula === 'D3' && new Date(x.registrado_em).getTime() > agora - 4 * hora));
+  db.localizacao_veterinario.sort((a, b) => a.registrado_em.localeCompare(b.registrado_em));
+  VETS.forEach((v) => { const l = db.localizacao_veterinario.filter((x) => x.matricula === v.m); if (l.length) db.veterinarios_posicao_atual.push(Object.assign({}, l[l.length - 1])); });
+  // respostas geradas na hora em que a visita é aberta
+  function respostasDe(vid) {
+    const v = db.visitas_tecnicas.find((x) => x.id === vid); if (!v) return [];
+    const ja = db.visita_tecnica_respostas.filter((r) => r.visita_id === vid); if (ja.length) return ja;
+    const ps = perguntas.filter((p) => p.setor === v.setor);
+    let nc = v.nao_conformidades, cr = v.criticos_nao_conformes;
+    const obs = ['Registro de temperatura incompleto no turno da tarde.', 'Produto sem etiqueta de identificação.', 'Ralo sem tampa e com resíduos.', 'Uniforme incompleto (sem touca).', 'Planilha de higienização sem assinatura.', 'Validade vencida encontrada na exposição.', 'Termômetro marcando acima do limite.'];
+    const out = ps.map((p, i) => {
+      let resp = 'sim';
+      if (p.critico && cr > 0) { resp = 'nao'; cr--; nc--; } else if (!p.critico && nc > 0 && rnd() < 0.45) { resp = 'nao'; nc--; } else if (rnd() < 0.06) resp = 'na';
+      return { visita_id: vid, pergunta_id: p.id, pergunta_texto: p.texto, critico: p.critico, resposta: resp, justificativa: resp === 'nao' ? escolhe(obs) : null, fotos_urls: [] };
+    });
+    db.visita_tecnica_respostas.push(...out);
+    const t = db.tarefas.find((x) => x.id === v.tarefa_id);
+    if (t && t.correcao_status !== 'pendente') out.filter((r) => r.resposta === 'nao').forEach((r) => db.correcao_itens.push({ tarefa_id: t.id, pergunta_texto: r.pergunta_texto, critico: r.critico, status: 'corrigido', aprovacao: t.correcao_status === 'aprovada' ? 'aprovado' : t.correcao_status === 'devolvida' ? 'devolvido' : null, aprovacao_obs: t.correcao_status === 'devolvida' ? 'Enviar foto mais nítida do registro.' : null, respondido_por: t.correcao_enviada_por, criado_em: v.finalizada_em }));
+    return out;
+  }
+  // cliente "falso" com a mesma interface usada pelo portal
+  function q(t) {
+    let f = [], single = false, op = 'select', payload = null, lim = null;
+    const o = {
+      select() { return o; }, order() { return o; }, limit(n) { lim = n; return o; },
+      eq(c, v) { f.push((r) => String(r[c] ?? '') === String(v ?? '')); return o; }, in(c, v) { f.push((r) => v.includes(r[c])); return o; },
+      gte(c, v) { f.push((r) => r[c] >= v); return o; }, lt(c, v) { f.push((r) => r[c] < v); return o; },
+      single() { single = true; return o; }, maybeSingle() { single = true; return o; },
+      insert(x) { op = 'insert'; payload = x; return o; }, update(x) { op = 'update'; payload = x; return o; },
+      then(res) {
+        if (t === 'visita_tecnica_respostas') f.forEach(() => {}), (db.visita_tecnica_respostas.length, null);
+        const vid = (() => { const r = { visita_id: null }; return r; })();
+        let tab = db[t] || [];
+        if (t === 'visita_tecnica_respostas') { const ids = db.visitas_tecnicas.map((v) => v.id).filter((id) => f.every((g) => g({ visita_id: id }))); if (ids.length === 1) respostasDe(ids[0]); tab = db.visita_tecnica_respostas; }
+        if (t === 'correcao_itens') db.visitas_tecnicas.filter((v) => v.tarefa_id && f.every((g) => g({ tarefa_id: v.tarefa_id }))).forEach((v) => respostasDe(v.id));
+        let d;
+        if (op === 'insert') { d = Object.assign({ id: 'dn' + Math.random() }, payload); tab.push(d); d = [d]; }
+        else if (op === 'update') { d = tab.filter((r) => f.every((g) => g(r))); d.forEach((r) => Object.assign(r, payload)); }
+        else { d = tab.filter((r) => f.every((g) => g(r))); if (t === 'visitas_tecnicas' && f.length >= 3) d = d.sort((a, b) => b.finalizada_em.localeCompare(a.finalizada_em)); if (lim) d = d.slice(0, lim); }
+        res({ data: single ? (d[0] || null) : d, error: null });
+      },
+    };
+    return o;
+  }
+  window.sb = { from: q };
+  document.body.insertAdjacentHTML('afterbegin', '<div class="faixa-demo">Modo demonstração · visitas, rotas e correções simuladas (nada é gravado) · as perguntas são as reais do ULVA</div>');
+  await abrirSessao({ nome: 'Responsável (demonstração)', matricula: 'demo', funcao: 'Diretoria do Sanitário', is_admin: false }, 'responsavel');
+}
 
+if (MODO_DEMO) iniciarDemo(); else restaurar();
 </script>
 </body>
 </html>
