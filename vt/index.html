@@ -1164,7 +1164,7 @@ async function desenharMapa(id, o) {
   if (!el || !window.L) { if (el) el.innerHTML = '<div class="celula-vazio">Mapa indisponível.</div>'; return; }
   const m = L.map(el, { zoomControl: true, attributionControl: true });
   mapaAtual = m;
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '© OpenStreetMap · © CARTO' }).addTo(m);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
   const pontos = [];
   // visitas (lojas) coloridas pela nota
   const porLoja = {};
