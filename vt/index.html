@@ -1267,7 +1267,7 @@ async function abrirVisita(id) {
     pa.linhas.map((l, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(l.item) + (l.critico ? ' <span class="pill vermelho" style="font-size:10px">CRÍTICO</span>' : '') + '</td><td>' + esc(pa.resp) + '</td><td>' + (pa.prazo ? dataCurta(pa.prazo) : '—') + '</td><td><span class="pill ' + l.st[1] + '">' + l.st[0] + '</span>' + (l.quem ? '<div class="sub-box">' + esc(l.quem) + '</div>' : '') + '</td></tr>').join('') + '</tbody></table></div>' : '';
   const delta = d.anterior ? Number(v.aproveitamento) - Number(d.anterior.aproveitamento) : null;
   main.innerHTML =
-    '<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap"><button class="btn-acao secundario" onclick="renderizar()">‹ Voltar</button><button class="btn-acao" onclick="baixarPdf()">⬇ Baixar PDF</button></div>' +
+    '<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap"><button class="btn-acao secundario" onclick="renderizar()">‹ Voltar</button><button class="btn-acao" onclick="baixarPdf()">⬇ Baixar PDF</button>' + (visitasDoDia(v).length > 1 ? '<button class="btn-acao" onclick="baixarPdfCompleto()">🖨 PDF completo do dia (' + visitasDoDia(v).length + ' setores, um por folha)</button>' : '') + '</div>' +
     cabecalho(nomeSetor(v.setor) + ' · Loja ' + esc(v.unidade || '—'), (numeroDoc(v) ? '<b>Nº ' + numeroDoc(v) + '</b> · ' : '') + 'Técnico veterinário: ' + esc(v.veterinario_nome) + ' · finalizada em ' + dataHora(v.finalizada_em), ' ') +
     (v.localizacao_lat != null ? '<div class="sub-box" style="margin:-16px 0 16px">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + ' — <a href="https://www.google.com/maps?q=' + v.localizacao_lat + ',' + v.localizacao_lng + '" target="_blank">ver no mapa</a></div>' : '') +
     '<div class="resumo-perdas">' +
@@ -1281,8 +1281,9 @@ async function abrirVisita(id) {
 }
 
 // ---------------------------------------------------------------- PDF (mesmo visual dos PDFs do app)
-function baixarPdf() {
-  const d = estado.visitaAberta; if (!d) return;
+// Folha de um setor (faixa navy + corpo + rodapé) — usada no PDF de um setor
+// e no PDF completo do dia (cada setor numa folha nova).
+function folhaPdf(d) {
   const v = d.v, pct = Number(v.aproveitamento || 0), b = banda(pct);
   const perguntas = estado.perguntas.filter((p) => p.setor === v.setor);
   const porP = new Map(d.respostas.filter((r) => r.pergunta_id).map((r) => [r.pergunta_id, r]));
@@ -1307,15 +1308,54 @@ function baixarPdf() {
   const corpo = (v.localizacao_lat != null ? '<div class="info">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + '</div>' : '') +
     '<div class="kpis">' + kpi('Aproveitamento', pct + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor, comp) + kpi('Pontos', v.pontos_realizados + ' / ' + v.pontos_possiveis) + kpi('Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D') + '</div>' +
     itens + plano + (v.consideracoes_finais ? '<div class="lbl">Considerações finais</div><div class="caixa">' + esc(v.consideracoes_finais) + '</div>' : '') + '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div>';
-  const agora = new Date();
-  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Visita técnica ' + esc(numeroDoc(v) || '') + ' — ' + esc(nomeSetor(v.setor)) + ' — Loja ' + esc(v.unidade || '') + '</title>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=block" rel="stylesheet"><style>' + CSS_PDF + '</style></head><body>' +
-    '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica</div><h1>' + esc(nomeSetor(v.setor)) + '</h1></div></div><div class="d">' + (numeroDoc(v) ? '<span class="ndoc">Nº ' + numeroDoc(v) + '</span><br>' : '') + 'Loja ' + esc(v.unidade || '—') + '<br>Téc. veterinário: ' + esc(v.veterinario_nome) + '<br>Finalizada em ' + dataHora(v.finalizada_em) + '</div></div>' +
-    '<div class="wrap">' + corpo + '</div><div class="ft"><b>' + ASSINATURA + '</b><span>Gerado em ' + dataHora(agora.toISOString()) + '</span></div>' +
+  return '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica</div><h1>' + esc(nomeSetor(v.setor)) + '</h1></div></div><div class="d">' + (numeroDoc(v) ? '<span class="ndoc">Nº ' + numeroDoc(v) + '</span><br>' : '') + 'Loja ' + esc(v.unidade || '—') + '<br>Téc. veterinário: ' + esc(v.veterinario_nome) + '<br>Finalizada em ' + dataHora(v.finalizada_em) + '</div></div>' +
+    '<div class="wrap">' + corpo + '</div>' + rodapePdf();
+}
+function rodapePdf() { return '<div class="ft"><b>' + ASSINATURA + '</b><span>Gerado em ' + dataHora(new Date().toISOString()) + '</span></div>'; }
+function abrirJanelaPdf(titulo, corpo, janela) {
+  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(titulo) + '</title>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=block" rel="stylesheet"><style>' + CSS_PDF + '</style></head><body>' + corpo +
     '<script>window.onload=function(){setTimeout(function(){window.print()},700)}<\/script></body></html>';
-  const w = window.open('', '_blank');
+  const w = janela || window.open('', '_blank');
   if (!w) { toast('Libere as janelas pop-up para baixar o PDF.', 'erro'); return; }
   w.document.open(); w.document.write(html); w.document.close();
+}
+function baixarPdf() {
+  const d = estado.visitaAberta; if (!d) return;
+  const v = d.v;
+  abrirJanelaPdf('Visita técnica ' + (numeroDoc(v) || '') + ' — ' + nomeSetor(v.setor) + ' — Loja ' + (v.unidade || ''), folhaPdf(d));
+}
+// Visitas finalizadas da mesma loja no mesmo dia, uma por setor (a mais recente).
+function visitasDoDia(v) {
+  const dia = new Date(v.finalizada_em).toDateString();
+  const porSetor = {};
+  estado.visitas.filter((x) => x.status !== 'em_andamento' && x.finalizada_em && (x.unidade || '') === (v.unidade || '') && new Date(x.finalizada_em).toDateString() === dia)
+    .forEach((x) => { if (!porSetor[x.setor] || x.finalizada_em > porSetor[x.setor].finalizada_em) porSetor[x.setor] = x; });
+  return SETORES.map((s) => porSetor[s.key]).filter(Boolean);
+}
+// PDF completo do dia: folha de resumo e depois cada setor numa folha nova,
+// para imprimir e entregar cada uma ao encarregado do setor.
+async function baixarPdfCompleto() {
+  const d0 = estado.visitaAberta; if (!d0) return;
+  const vs = visitasDoDia(d0.v); if (!vs.length) return;
+  // Abre a janela já no clique (depois do await o navegador bloquearia o pop-up).
+  const janela = window.open('', '_blank');
+  if (!janela) { toast('Libere as janelas pop-up para baixar o PDF.', 'erro'); return; }
+  janela.document.write('<p style="font-family:sans-serif;padding:24px">Montando o PDF completo…</p>');
+  const dados = await Promise.all(vs.map((x) => (x.id === d0.v.id ? Promise.resolve(d0) : dadosVisita(x.id))));
+  const media = Math.round(vs.reduce((s, x) => s + Number(x.aproveitamento || 0), 0) / vs.length * 10) / 10;
+  const nc = vs.reduce((s, x) => s + (x.nao_conformidades || 0), 0), cr = vs.reduce((s, x) => s + (x.criticos_nao_conformes || 0), 0);
+  const b = banda(media);
+  const kpi = (r, val, cor) => '<div class="k"><div class="kn">' + r + '</div><div class="kv"' + (cor ? ' style="color:' + cor + '"' : '') + '>' + val + '</div></div>';
+  const vets = Array.from(new Set(vs.map((x) => x.veterinario_nome).filter(Boolean))).join(', ');
+  const linhas = vs.map((x, i) => { const bx = banda(Number(x.aproveitamento || 0)); return '<tr><td class="pn">' + (i + 1) + '</td><td><b>' + esc(nomeSetor(x.setor)) + '</b>' + (numeroDoc(x) ? '<div class="base">Nº ' + numeroDoc(x) + '</div>' : '') + '</td><td class="pc" style="color:' + bx.cor + ';font-weight:700">' + x.aproveitamento + '%</td><td class="pc" style="color:' + ((x.nao_conformidades || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.nao_conformidades || 0) + '</td><td class="pc" style="color:' + ((x.criticos_nao_conformes || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.criticos_nao_conformes || 0) + '</td><td>' + (x.setor === 'geral' ? 'Gerência' : 'Encarregado · ' + esc(nomeSetor(x.setor))) + '</td></tr>'; }).join('');
+  const v = d0.v;
+  const resumo = '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica · resumo</div><h1>Loja ' + esc(v.unidade || '—') + '</h1></div></div><div class="d">' + new Date(v.finalizada_em).toLocaleDateString('pt-BR') + '<br>Téc. veterinário: ' + esc(vets || '—') + '<br>' + vs.length + ' setor(es) avaliado(s)</div></div>' +
+    '<div class="wrap"><div class="kpis">' + kpi('Média dos setores', media.toFixed(1).replace('.', ',').replace(',0', '') + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor) + kpi('Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D') + '</div>' +
+    '<div class="lbl">Setores <span class="q">· cada um numa folha, para entregar ao responsável</span></div><table class="plano"><thead><tr><th class="pn">#</th><th>Setor</th><th class="pc">Aproveitamento</th><th class="pc">NC</th><th class="pc">Críticos</th><th>Entregar para</th></tr></thead><tbody>' + linhas + '</tbody></table>' +
+    '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div></div>' + rodapePdf();
+  const folhas = [resumo].concat(dados.map(folhaPdf)).map((f, i) => '<section' + (i ? ' style="page-break-before:always;break-before:page"' : '') + '>' + f + '</section>').join('');
+  abrirJanelaPdf('Visita técnica — Loja ' + (v.unidade || '') + ' — ' + new Date(v.finalizada_em).toLocaleDateString('pt-BR'), folhas, janela);
 }
 const LOGO_PDF = '<svg width="38" height="38" viewBox="0 0 160 160"><rect width="160" height="160" rx="32" fill="#16294A"/><path d="M42 36 V84 A38 38 0 0 0 118 84 V36" fill="none" stroke="#F4F5F7" stroke-width="20" stroke-linecap="round"/><circle cx="80" cy="74" r="15" fill="#2F7BFF"/></svg>';
 const CSS_PDF = "@page{size:A4;margin:10mm 0 12mm}@page:first{margin-top:0}*{box-sizing:border-box}html,body{margin:0}body{font-family:Inter,Roboto,'Helvetica Neue',Arial,sans-serif;color:#0B1220;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
