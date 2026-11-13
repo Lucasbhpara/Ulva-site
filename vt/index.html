@@ -891,6 +891,10 @@
   .card-tit{font-weight:800;font-size:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
   .link-vt{color:var(--accent);font-weight:700;font-size:12.5px;cursor:pointer}
   .mapa-vt{width:100%;height:calc(100vh - 210px);min-height:420px;background:#E9EEF5}
+  .ponto-cor{width:12px;height:12px;border-radius:50%;flex:none;display:inline-block}
+  .rota-resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .rota-resumo .rr{background:#F3F6FB;border-radius:10px;padding:8px 10px}.rota-resumo .rr b{display:block;font-size:16px;color:#0E1B2C}.rota-resumo .rr span{font-size:11px;color:#5B6280}
+  #rota-paradas{max-height:calc(100vh - 470px);overflow:auto}
   .mapa-layout{display:grid;grid-template-columns:1fr 330px;gap:16px}@media(max-width:1000px){.mapa-layout{grid-template-columns:1fr}.mapa-vt{height:420px}}
   .pino-vt{width:34px;height:34px;border-radius:50%;background:var(--c);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)}
   .pino-vt.vivo{box-shadow:0 0 0 6px color-mix(in srgb,var(--c) 30%,transparent),0 2px 8px rgba(0,0,0,.3)}
@@ -946,6 +950,7 @@
     <div style="padding:6px 4px;display:flex;flex-direction:column;gap:2px">
       <button class="nav-item nav-vt" data-pagina="geral" data-so-resp onclick="irPara('geral')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span><span>Visão geral</span></button>
       <button class="nav-item nav-vt" data-pagina="mapa" data-so-resp onclick="irPara('mapa')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span><span>Mapa dos veterinários</span></button>
+      <button class="nav-item nav-vt" data-pagina="rotas" data-so-resp onclick="irPara('rotas')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></span><span>Rotas</span></button>
       <button class="nav-item nav-vt" data-pagina="visitas" onclick="irPara('visitas')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span>Visitas</span></button>
       <button class="nav-item nav-vt" data-pagina="correcoes" onclick="irPara('correcoes')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span><span>Correções</span></button>
       <button class="nav-item nav-vt" data-pagina="perguntas" data-so-resp onclick="irPara('perguntas')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span>Perguntas</span></button>
@@ -1107,6 +1112,7 @@ function renderizar() {
   if (p === 'correcoes') return paginaCorrecoes();
   if (p === 'perguntas') return paginaPerguntas();
   if (p === 'veterinarios') return paginaVeterinarios();
+  if (p === 'rotas') return paginaRotas();
 }
 
 // ---------------------------------------------------------------- visão geral
@@ -1485,6 +1491,240 @@ async function paginaVeterinarios() {
     '<div class="tabela-wrap"><table><thead><tr><th>Veterinário</th><th>Visitas no mês</th><th>Visitas no total</th><th>Lojas no mês</th><th>Nota média dada</th><th>Última visita</th><th>Última posição</th></tr></thead><tbody>' + (linhas || '<tr><td colspan="7" class="celula-vazio">Nenhuma visita ainda.</td></tr>') + '</tbody></table></div>';
 }
 
+// ---------------------------------------------------------------- rotas dos veterinários
+// Lojas (com localização), veterinários e as lojas que cada um atende vêm das
+// tabelas vt_lojas / vt_veterinarios / vt_rota_lojas (carga da planilha
+// "Rota provisória"). Ao clicar num veterinário, a rota é traçada pelas ruas
+// (OSRM) saindo do endereço dele. Lojas com local "aproximado" (achadas pelo
+// nome) podem ser ajustadas arrastando o pino e confirmadas.
+const CORES_VET = ['#2F7BFF', '#7C3AED', '#0E9F6E', '#D97706', '#DB2777', '#0891B2', '#65A30D', '#DC2626', '#4F46E5', '#B45309'];
+function sbVT() { return window.sbReal || sb; }
+async function carregarRotas(forcar) {
+  if (estado.rotas && !forcar) return estado.rotas;
+  const c = sbVT();
+  const [v, r, l] = await Promise.all([
+    c.from('vt_veterinarios').select('*').eq('ativo', true).order('ordem'),
+    c.from('vt_rota_lojas').select('*').order('ordem'),
+    c.from('vt_lojas').select('*'),
+  ]);
+  if (v.error || r.error || l.error) throw new Error((v.error || r.error || l.error).message);
+  const lojas = {}; (l.data || []).forEach((x) => (lojas[x.numero] = x));
+  const vets = (v.data || []).map((x, i) => ({ ...x, cor: CORES_VET[i % CORES_VET.length], rota: (r.data || []).filter((y) => y.vet_id === x.id).sort((a, b) => a.ordem - b.ordem) }));
+  estado.rotas = { vets, lojas };
+  return estado.rotas;
+}
+function distKm(a, b) { const t = Math.PI / 180, x = (b[0] - a[0]) * t, y = (b[1] - a[1]) * t; const h = Math.sin(x / 2) ** 2 + Math.cos(a[0] * t) * Math.cos(b[0] * t) * Math.sin(y / 2) ** 2; return 12742 * Math.asin(Math.sqrt(h)); }
+function fmtKm(k) { return k == null ? '—' : (k >= 100 ? Math.round(k) : k.toFixed(1).replace('.', ',')) + ' km'; }
+function fmtTempo(min) { if (min == null) return '—'; const h = Math.floor(min / 60), m = Math.round(min % 60); return h ? h + 'h' + (m ? p2(m) : '') : m + ' min'; }
+// Rota pelas ruas (OSRM). 'otimizada' = melhor ordem (ida e volta pra casa);
+// 'planilha' = na ordem da planilha. Fica guardada no navegador.
+async function tracarRota(pontos, modo) {
+  const coords = pontos.map((p) => p[1].toFixed(5) + ',' + p[0].toFixed(5)).join(';');
+  const chave = 'vt-rota:' + modo + ':' + coords;
+  try { const c = localStorage.getItem(chave); if (c) return JSON.parse(c); } catch (e) {}
+  const url = modo === 'otimizada'
+    ? 'https://router.project-osrm.org/trip/v1/driving/' + coords + '?source=first&roundtrip=true&overview=full&geometries=geojson'
+    : 'https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&geometries=geojson';
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('roteador ' + r.status);
+  const j = await r.json();
+  if (j.code !== 'Ok') throw new Error(j.code);
+  const rota = (j.trips || j.routes)[0];
+  const ordem = j.waypoints.map((w, i) => ({ i, pos: modo === 'otimizada' ? w.waypoint_index : i })).sort((a, b) => a.pos - b.pos).map((x) => x.i);
+  const res = { linha: rota.geometry.coordinates.map((c) => [c[1], c[0]]), km: rota.distance / 1000, min: rota.duration / 60, ordem };
+  try { localStorage.setItem(chave, JSON.stringify(res)); } catch (e) {}
+  return res;
+}
+function vetSelecionado() { return (estado.rotas?.vets || []).find((v) => v.id === estado.vetRota) || null; }
+async function paginaRotas() {
+  if (!ehResp()) return irPara('visitas');
+  const main = document.getElementById('conteudo-principal');
+  let R;
+  try { R = await carregarRotas(); } catch (e) { main.innerHTML = cabecalho('Rotas dos veterinários', '') + '<div class="celula-vazio">Não consegui carregar as rotas: ' + esc(e.message) + '</div>'; return; }
+  const lojasTodas = Object.values(R.lojas);
+  const aprox = lojasTodas.filter((l) => l.local_status === 'aproximado');
+  const semLocal = lojasTodas.filter((l) => l.lat == null);
+  const v = vetSelecionado();
+  const modo = estado.modoRota || 'otimizada';
+  const listaVets = R.vets.map((x) => {
+    const nAprox = x.rota.filter((r) => R.lojas[r.loja]?.local_status === 'aproximado').length;
+    return '<div class="vet-linha' + (v && v.id === x.id ? ' ativo' : '') + '" onclick="estado.vetRota=(estado.vetRota===' + x.id + '?null:' + x.id + ');renderizar()"><span class="ponto-cor" style="background:' + x.cor + '"></span><div style="flex:1;min-width:0"><div style="font-weight:700">' + esc(x.nome) + '</div><div class="sub-box">' + x.rota.length + ' lojas' + (nAprox ? ' · <span style="color:#B45309">' + nAprox + ' a validar</span>' : '') + (x.endereco ? '' : ' · sem endereço de saída') + '</div></div></div>';
+  }).join('');
+  let painel;
+  if (v) {
+    const modos = [['otimizada', 'Melhor ordem'], ['planilha', 'Ordem da planilha']].map(([k, t]) => '<button class="chip ' + (modo === k ? 'ativo' : '') + '" onclick="estado.modoRota=\'' + k + '\';renderizar()">' + t + '</button>').join('');
+    painel = '<div class="item-card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="ponto-cor" style="background:' + v.cor + '"></span><div class="card-tit" style="padding:0;flex:1">' + esc(v.nome) + '</div><button class="btn-acao secundario" style="padding:6px 10px" onclick="estado.vetRota=null;renderizar()">✕</button></div>' +
+      '<div class="sub-box" style="margin-bottom:8px">' + esc((v.contato || []).join(' · ')) + (v.endereco ? '<br>Saída: ' + esc(v.endereco) : '<br>Sem endereço de saída — a rota começa na 1ª loja.') + '</div>' +
+      '<div class="chips-wrap" style="margin-bottom:10px">' + modos + '</div>' +
+      '<div id="rota-resumo" class="rota-resumo">Traçando a rota…</div>' +
+      '<button class="btn-acao" style="width:100%;margin:10px 0" onclick="abrirRelatorioSemana(' + v.id + ')">📄 Relatório da semana</button>' +
+      '<div id="rota-paradas"></div></div>';
+  } else {
+    painel = '<div class="item-card"><div class="card-tit" style="padding:0 0 8px">Veterinários <span class="sub-box">· clique para ver a rota</span></div>' + listaVets + '</div>' +
+      '<div class="item-card" style="margin-top:14px"><div class="card-tit" style="padding:0 0 6px">Locais a validar</div><div class="sub-box" style="margin-bottom:8px">' + aprox.length + ' lojas foram localizadas pelo nome (pino laranja). Clique, confira e ajuste arrastando o pino.' + (semLocal.length ? ' ' + semLocal.length + ' ainda sem local.' : '') + '</div>' +
+      aprox.slice(0, 200).map((l) => '<div class="parada" style="cursor:pointer" onclick="focarLoja(\'' + esc(l.numero) + '\')"><b>' + esc(l.numero) + ' · ' + esc(l.nome) + '</b><span>' + (l.lat == null ? 'sem local' : esc((l.local_ref || '').split(',').slice(0, 3).join(','))) + '</span></div>').join('') + '</div>';
+  }
+  main.innerHTML = cabecalho('Rotas dos veterinários', R.vets.length + ' veterinários · ' + lojasTodas.length + ' lojas · ' + (lojasTodas.length - aprox.length - semLocal.length) + ' com local confirmado') +
+    '<div class="mapa-layout"><div class="item-card" style="padding:0;overflow:hidden"><div id="mapa-rotas" class="mapa-vt"></div></div><div>' + painel + '</div></div>';
+  if (!window.L) return;
+  const m = L.map('mapa-rotas'); mapaAtual = m;
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap · rotas © OSRM' }).addTo(m);
+  estado.marcadoresLoja = {};
+  const corVetDaLoja = {}; R.vets.forEach((x) => x.rota.forEach((r) => { if (!corVetDaLoja[r.loja]) corVetDaLoja[r.loja] = x; }));
+  const pontos = [];
+  const lojasMapa = v ? v.rota.map((r) => R.lojas[r.loja]).filter(Boolean) : lojasTodas;
+  lojasMapa.forEach((l) => {
+    if (l.lat == null) return;
+    const aproxL = l.local_status === 'aproximado';
+    const cor = aproxL ? '#F59E0B' : v ? v.cor : (corVetDaLoja[l.numero]?.cor || '#5B6280');
+    const mk = L.circleMarker([l.lat, l.lng], { radius: v ? 7 : 5, color: aproxL ? '#B45309' : '#fff', weight: aproxL ? 2 : 1.5, fillColor: cor, fillOpacity: 0.95 }).addTo(m);
+    mk.bindTooltip(esc(l.numero) + ' · ' + esc(l.nome), { direction: 'top', offset: [0, -6] });
+    mk.on('click', () => abrirLojaNoMapa(l.numero));
+    estado.marcadoresLoja[l.numero] = mk;
+    pontos.push([l.lat, l.lng]);
+  });
+  if (!v) {
+    R.vets.forEach((x) => { if (x.lat == null) return; L.marker([x.lat, x.lng], { icon: L.divIcon({ className: '', html: '<div class="pino-vt" style="--c:' + x.cor + ';width:26px;height:26px;font-size:10px">' + esc(iniciais(x.nome)) + '</div>', iconSize: [26, 26], iconAnchor: [13, 13] }) }).bindTooltip(esc(x.nome) + ' (saída)').on('click', () => { estado.vetRota = x.id; renderizar(); }).addTo(m); });
+    if (pontos.length) m.fitBounds(pontos, { padding: [20, 20] }); else m.setView([-19.92, -43.94], 7);
+    setTimeout(() => m.invalidateSize(), 150);
+    if (estado.focarLoja) { const n = estado.focarLoja; estado.focarLoja = null; abrirLojaNoMapa(n); }
+    return;
+  }
+  // rota do veterinário
+  const paradas = v.rota.map((r) => ({ r, l: R.lojas[r.loja] })).filter((x) => x.l && x.l.lat != null);
+  const semLoc = v.rota.filter((r) => !R.lojas[r.loja] || R.lojas[r.loja].lat == null);
+  const casa = v.lat != null ? [v.lat, v.lng] : null;
+  if (casa) L.marker(casa, { icon: L.divIcon({ className: '', html: '<div class="pino-vt" style="--c:' + v.cor + '">' + esc(iniciais(v.nome)) + '</div>', iconSize: [34, 34], iconAnchor: [17, 17] }), zIndexOffset: 1000 }).bindPopup('<b>' + esc(v.nome) + '</b><br>Saída: ' + esc(v.endereco || '')).addTo(m);
+  const pts = (casa ? [casa] : []).concat(paradas.map((x) => [x.l.lat, x.l.lng]));
+  if (pts.length) m.fitBounds(pts, { padding: [30, 30] });
+  setTimeout(() => m.invalidateSize(), 150);
+  let res = null, aviso = '';
+  if (pts.length >= 2) {
+    try { res = await tracarRota(pts, modo); }
+    catch (e) {
+      // sem roteador: linha reta, com km estimado (reta × 1,3)
+      let ord = pts.map((_, i) => i);
+      if (modo === 'otimizada') { // vizinho mais próximo, saindo do 1º ponto
+        const rest = ord.slice(1); ord = [0];
+        while (rest.length) { const u = pts[ord[ord.length - 1]]; let bi = 0; rest.forEach((j, k) => { if (distKm(u, pts[j]) < distKm(u, pts[rest[bi]])) bi = k; }); ord.push(rest.splice(bi, 1)[0]); }
+      }
+      const linha = ord.map((i) => pts[i]); if (modo === 'otimizada' && casa) linha.push(pts[0]);
+      let km = 0; for (let i = 1; i < linha.length; i++) km += distKm(linha[i - 1], linha[i]) * 1.3;
+      res = { linha, km, min: km, ordem: ord }; aviso = 'Roteador indisponível agora — linha reta e km estimado.';
+    }
+    if (mapaAtual !== m) return;
+    L.polyline(res.linha, { color: v.cor, weight: 4, opacity: 0.8 }).addTo(m);
+  }
+  const ordemParadas = res ? res.ordem.filter((i) => !casa || i > 0).map((i) => paradas[casa ? i - 1 : i]) : paradas;
+  ordemParadas.forEach((x, i) => { const mk = estado.marcadoresLoja[x.l.numero]; if (mk) mk.bindTooltip((i + 1) + ' · ' + esc(x.l.numero) + ' ' + esc(x.l.nome), { permanent: ordemParadas.length <= 45, direction: 'top', offset: [0, -6], className: 'rotulo-loja' }); });
+  const el = document.getElementById('rota-resumo');
+  if (el) el.innerHTML = '<div class="rr"><b>' + v.rota.length + '</b><span>lojas</span></div><div class="rr"><b>' + fmtKm(res?.km) + '</b><span>' + (modo === 'otimizada' && casa ? 'circuito (ida e volta)' : 'percurso') + '</span></div><div class="rr"><b>' + fmtTempo(res?.min) + '</b><span>só dirigindo</span></div>' + (aviso ? '<div class="sub-box" style="grid-column:1/-1;color:#B45309">' + aviso + '</div>' : '');
+  const ep = document.getElementById('rota-paradas');
+  if (ep) ep.innerHTML = ordemParadas.map((x, i) => '<div class="parada" style="cursor:pointer" onclick="abrirLojaNoMapa(\'' + esc(x.l.numero) + '\')"><b>' + (i + 1) + '. ' + esc(x.l.numero) + ' · ' + esc(x.l.nome) + (x.l.local_status === 'aproximado' ? ' <span class="pill laranja" style="font-size:10px">a validar</span>' : '') + '</b><span>' + esc(x.l.municipio || (x.l.local_ref || '').split(',').slice(-4, -3).join('') || '') + (x.r.supervisor ? ' · sup. ' + esc(x.r.supervisor) : '') + '</span></div>').join('') +
+    (semLoc.length ? '<div class="sub-box" style="margin-top:8px;color:#B45309">Sem local (fora da rota): ' + semLoc.map((r) => esc(r.loja)).join(', ') + '</div>' : '');
+}
+function focarLoja(n) { estado.focarLoja = n; estado.vetRota = null; if (estado.pagina !== 'rotas') return irPara('rotas'); renderizar(); }
+// Popup da loja: dados, local e validação (arrastar o pino e salvar).
+function abrirLojaNoMapa(n) {
+  const R = estado.rotas, l = R && R.lojas[n], m = mapaAtual; if (!l || !m) return;
+  const vets = R.vets.filter((x) => x.rota.some((r) => r.loja === n)).map((x) => esc(x.nome)).join(', ');
+  const st = l.local_status === 'aproximado' ? '<span class="pill laranja">Local aproximado</span>' : l.local_status === 'validado' ? '<span class="pill verde">Local validado</span>' : '<span class="pill">Endereço da base</span>';
+  const html = '<div style="min-width:230px"><b>' + esc(l.numero) + ' · ' + esc(l.nome) + '</b><br>' + st + '<div style="margin:6px 0;font-size:12px">' + esc(l.endereco ? l.endereco + ' — ' + (l.municipio || '') + '/' + (l.uf || '') : (l.local_ref || 'Sem endereço')) + '</div>' +
+    '<div style="font-size:12px;color:#5B6280">Veterinário: ' + (vets || '—') + '</div>' +
+    (l.lat != null ? '<a href="https://www.google.com/maps/search/?api=1&query=' + l.lat + ',' + l.lng + '" target="_blank">Abrir no Google Maps</a><br>' : '') +
+    (MODO_DEMO ? '' : '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn-acao" style="padding:6px 10px;font-size:12px" onclick="ajustarLoja(\'' + esc(n) + '\')">✋ Ajustar no mapa</button>' + (l.local_status !== 'validado' && l.lat != null ? '<button class="btn-acao secundario" style="padding:6px 10px;font-size:12px" onclick="salvarLocalLoja(\'' + esc(n) + '\')">✓ Está certo</button>' : '') + '<button class="btn-acao secundario" style="padding:6px 10px;font-size:12px" onclick="colarLocalLoja(\'' + esc(n) + '\')">📍 Colar coordenadas</button></div>') + '</div>';
+  const pos = l.lat != null ? [l.lat, l.lng] : m.getCenter();
+  L.popup({ maxWidth: 320 }).setLatLng(pos).setContent(html).openOn(m);
+  if (l.lat != null) m.setView(pos, Math.max(m.getZoom(), 14));
+}
+function ajustarLoja(n) {
+  const m = mapaAtual, l = estado.rotas.lojas[n]; if (!m) return; m.closePopup();
+  const pos = l.lat != null ? [l.lat, l.lng] : m.getCenter();
+  if (estado.pinoAjuste) estado.pinoAjuste.remove();
+  const pino = L.marker(pos, { draggable: true, zIndexOffset: 2000 }).addTo(m);
+  estado.pinoAjuste = pino;
+  const conteudo = () => '<b>' + esc(n) + ' · ' + esc(l.nome) + '</b><br>Arraste o pino até a loja e salve.<br><button class="btn-acao" style="padding:6px 10px;font-size:12px;margin-top:6px" onclick="salvarLocalLoja(\'' + esc(n) + '\', true)">Salvar aqui</button>';
+  pino.bindPopup(conteudo()).openPopup();
+  pino.on('dragend', () => pino.setPopupContent(conteudo()).openPopup());
+  m.setView(pos, 16);
+}
+async function salvarLocalLoja(n, doPino, latlng) {
+  const l = estado.rotas.lojas[n];
+  let lat = l.lat, lng = l.lng;
+  if (doPino && estado.pinoAjuste) { const p = estado.pinoAjuste.getLatLng(); lat = p.lat; lng = p.lng; }
+  if (latlng) [lat, lng] = latlng;
+  const { error } = await sbVT().from('vt_lojas').update({ lat, lng, local_status: 'validado', atualizado_em: new Date().toISOString() }).eq('numero', n);
+  if (error) return toast('Não salvou: ' + error.message, 'erro');
+  Object.assign(l, { lat, lng, local_status: 'validado' });
+  if (estado.pinoAjuste) { estado.pinoAjuste.remove(); estado.pinoAjuste = null; }
+  toast('Local da loja ' + n + ' validado.');
+  renderizar();
+}
+function colarLocalLoja(n) {
+  const t = prompt('Cole as coordenadas (ex.: -19.9208, -43.9378) ou um link do Google Maps da loja:');
+  if (!t) return;
+  const mm = t.match(/@?(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/) || t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (!mm) return toast('Não achei coordenadas nesse texto.', 'erro');
+  salvarLocalLoja(n, false, [Number(mm[1]), Number(mm[2])]);
+}
+
+// ---------------------------------------------------------------- relatório semanal do veterinário
+function inicioSemana(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); const w = (x.getDay() + 6) % 7; x.setDate(x.getDate() - w); return x; }
+function visitaDoVet(v, vet) {
+  const nomes = vet.nome.split('/').map((s) => sem(s).replace(/\(.*\)/, '').trim().split(' ')[0]).filter(Boolean);
+  const n = sem(v.veterinario_nome);
+  return nomes.some((x) => n === x || n.startsWith(x + ' ') || n.split(' ').includes(x));
+}
+async function abrirRelatorioSemana(vetId, deslocSemana) {
+  const R = estado.rotas, vet = R.vets.find((x) => x.id === vetId); if (!vet) return;
+  const janela = window.open('', '_blank');
+  if (!janela) return toast('Libere as janelas pop-up para gerar o relatório.', 'erro');
+  janela.document.write('<p style="font-family:sans-serif;padding:24px">Montando o relatório…</p>');
+  const ini = inicioSemana(new Date()); ini.setDate(ini.getDate() + 7 * (deslocSemana || 0));
+  const fim = new Date(ini); fim.setDate(fim.getDate() + 7);
+  const visitas = estado.visitas.filter((v) => v.finalizada_em && new Date(v.finalizada_em) >= ini && new Date(v.finalizada_em) < fim && visitaDoVet(v, vet));
+  // km pelo GPS do app (posições a cada 5 min); ignora saltos impossíveis
+  let km = null, pings = 0;
+  try {
+    const { data: pos } = await sb.from('localizacao_veterinario').select('nome,lat,lng,registrado_em,precisao_m').gte('registrado_em', ini.toISOString()).lt('registrado_em', fim.toISOString()).order('registrado_em').limit(5000);
+    const meus = (pos || []).filter((p) => visitaDoVet({ veterinario_nome: p.nome }, vet) && (p.precisao_m == null || p.precisao_m < 200));
+    pings = meus.length;
+    if (meus.length > 1) { km = 0; for (let i = 1; i < meus.length; i++) { const d = distKm([meus[i - 1].lat, meus[i - 1].lng], [meus[i].lat, meus[i].lng]); const h = (new Date(meus[i].registrado_em) - new Date(meus[i - 1].registrado_em)) / 3600e3; if (d > 0.05 && (h <= 0 || d / h < 160)) km += d; } }
+  } catch (e) {}
+  const lojasVis = [...new Set(visitas.map((v) => String(v.unidade || '—')))];
+  const rotaSet = new Set(vet.rota.map((r) => String(r.loja)));
+  const naRota = lojasVis.filter((u) => rotaSet.has(u)).length;
+  // notas por setor
+  const porSetor = SETORES.map((s) => { const l = visitas.filter((v) => v.setor === s.key); return { s, l, media: mediaNota(l), apont: l.filter(semNota).reduce((a, v) => a + (v.nao_conformidades || 0), 0), nc: l.filter((v) => !semNota(v)).reduce((a, v) => a + (v.nao_conformidades || 0), 0) }; }).filter((x) => x.l.length);
+  // pior loja: menor nota média; sem nota, mais apontamentos
+  const porLoja = lojasVis.map((u) => { const l = visitas.filter((v) => String(v.unidade || '—') === u); return { u, l, media: mediaNota(l), apont: l.filter(semNota).reduce((a, v) => a + (v.nao_conformidades || 0), 0), crit: l.reduce((a, v) => a + (v.criticos_nao_conformes || 0), 0) }; });
+  const comNota = porLoja.filter((x) => x.media != null).sort((a, b) => a.media - b.media);
+  const pior = comNota[0] || porLoja.slice().sort((a, b) => b.apont - a.apont)[0] || null;
+  const nomeLoja = (u) => (R.lojas[u] ? R.lojas[u].nome : '');
+  const kpi = (r, val, cor, sub) => '<div class="k"><div class="kn">' + r + '</div><div class="kv"' + (cor ? ' style="color:' + cor + '"' : '') + '>' + val + '</div>' + (sub ? '<div class="ks">' + sub + '</div>' : '') + '</div>';
+  const mediaGeral = mediaNota(visitas);
+  const bg = mediaGeral == null ? null : banda(mediaGeral);
+  const tabSetores = porSetor.length ? '<table class="plano"><thead><tr><th>Setor</th><th class="pc">Visitas</th><th class="pc">Nota média</th><th class="pc">NC</th><th class="pc">Apontamentos</th></tr></thead><tbody>' + porSetor.map((x) => { const b = x.media == null ? null : banda(x.media); return '<tr><td><b>' + esc(x.s.nome) + '</b></td><td class="pc">' + x.l.length + '</td><td class="pc" style="font-weight:700;color:' + (b ? b.cor : '#5B6280') + '">' + (x.media == null ? 'Sem nota' : x.media.toFixed(1).replace('.', ',') + '%') + '</td><td class="pc">' + x.nc + '</td><td class="pc">' + x.apont + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="caixa">Nenhuma visita finalizada nesta semana.</div>';
+  const tabLojas = porLoja.length ? '<table class="plano"><thead><tr><th>Loja</th><th class="pc">Visitas</th><th class="pc">Nota média</th><th class="pc">Apontamentos</th><th class="pc">Críticos</th></tr></thead><tbody>' + porLoja.sort((a, b) => (a.media ?? 999) - (b.media ?? 999) || b.apont - a.apont).map((x) => '<tr' + (pior && x.u === pior.u ? ' style="background:#FEF2F2"' : '') + '><td><b>' + esc(x.u) + '</b> ' + esc(nomeLoja(x.u)) + (rotaSet.has(x.u) ? '' : ' <span class="base">(fora da rota)</span>') + '</td><td class="pc">' + x.l.length + '</td><td class="pc">' + (x.media == null ? '—' : x.media.toFixed(1).replace('.', ',') + '%') + '</td><td class="pc">' + x.apont + '</td><td class="pc">' + x.crit + '</td></tr>').join('') + '</tbody></table>' : '';
+  const lista = visitas.length ? '<table class="plano"><thead><tr><th>Data</th><th>Loja</th><th>Setor</th><th class="pc">Resultado</th></tr></thead><tbody>' + visitas.slice().sort((a, b) => a.finalizada_em.localeCompare(b.finalizada_em)).map((v) => '<tr><td>' + dataHora(v.finalizada_em) + '</td><td>' + esc(v.unidade || '—') + ' ' + esc(nomeLoja(String(v.unidade))) + '</td><td>' + esc(nomeSetor(v.setor)) + '</td><td class="pc">' + (semNota(v) ? (v.nao_conformidades || 0) + ' apont.' : v.aproveitamento + '%') + '</td></tr>').join('') + '</tbody></table>' : '';
+  const faltam = vet.rota.filter((r) => !lojasVis.includes(String(r.loja)));
+  const periodo = dataCurta(ini.toISOString()) + ' a ' + dataCurta(new Date(fim - 1).toISOString()) + '/' + fim.getFullYear();
+  const corpo = '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica · relatório semanal</div><h1>' + esc(vet.nome) + '</h1></div></div><div class="d">Semana de ' + periodo + '<br>' + esc((vet.contato || []).join(' · ')) + '<br>Rota: ' + vet.rota.length + ' lojas</div></div>' +
+    '<div class="wrap"><div class="kpis">' +
+      kpi('Lojas atendidas', lojasVis.length, null, naRota + ' de ' + vet.rota.length + ' lojas da rota') +
+      kpi('Visitas (setores)', visitas.length) +
+      kpi('Km rodados', km == null ? '—' : fmtKm(km), null, km == null ? 'sem GPS do app na semana' : pings + ' posições do app') +
+      kpi('Nota média', mediaGeral == null ? 'Sem nota' : mediaGeral.toFixed(1).replace('.', ',') + '%', bg ? bg.cor : null, bg ? bg.texto : 'modelo livre') +
+    '</div>' +
+    (pior ? '<div class="caixa" style="border-color:#FCA5A5;background:#FEF2F2"><b>Pior loja da semana:</b> ' + esc(pior.u) + ' ' + esc(nomeLoja(pior.u)) + ' — ' + (pior.media != null ? 'nota média ' + pior.media.toFixed(1).replace('.', ',') + '%' : pior.apont + ' apontamento(s)') + (pior.crit ? ' · ' + pior.crit + ' crítico(s) reprovado(s)' : '') + '</div>' : '') +
+    '<div class="lbl">Notas por setor</div>' + tabSetores +
+    (tabLojas ? '<div class="lbl">Lojas atendidas <span class="q">· da pior para a melhor</span></div>' + tabLojas : '') +
+    (lista ? '<div class="lbl">Visitas da semana</div>' + lista : '') +
+    (faltam.length ? '<div class="lbl">Lojas da rota sem visita nesta semana <span class="q">· ' + faltam.length + '</span></div><div class="caixa" style="font-size:11px">' + faltam.map((r) => esc(r.loja) + ' ' + esc(nomeLoja(String(r.loja)))).join(' · ') + '</div>' : '') +
+    '<div class="base" style="margin-top:14px">Km pelo GPS do app (posição a cada 5 min com a Visita Técnica aberta). Visitas do modelo livre não têm nota: entram pelos apontamentos.</div></div>' + rodapePdf();
+  abrirJanelaPdf('Relatório semanal — ' + vet.nome + ' — ' + periodo, corpo, janela);
+}
+
 document.getElementById('login-matricula').addEventListener('keydown', (e) => { if (e.key === 'Enter') entrar(); });
 // ---------------------------------------------------------------- demonstração
 // ulva.com.br/vt?demo — tudo simulado no navegador (nada é gravado no banco).
@@ -1627,6 +1867,7 @@ async function iniciarDemo() {
     };
     return o;
   }
+  window.sbReal = real;
   window.sb = { from: q };
   document.body.insertAdjacentHTML('afterbegin', '<div class="faixa-demo">Modo demonstração · visitas, rotas e correções simuladas (nada é gravado) · as perguntas são as reais do ULVA</div>');
   await abrirSessao({ nome: 'Responsável (demonstração)', matricula: 'demo', funcao: 'Diretoria do Sanitário', is_admin: false }, 'responsavel');
