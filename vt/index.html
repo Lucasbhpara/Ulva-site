@@ -1354,12 +1354,34 @@ function folhaPdf(d) {
     '<div class="wrap">' + corpo + '</div>' + rodapePdf();
 }
 function rodapePdf() { return '<div class="ft"><b>' + ASSINATURA + '</b><span>Gerado em ' + dataHora(new Date().toISOString()) + '</span></div>'; }
+// Janela do PDF: o documento + uma barra (fora da impressão) com
+// "Compartilhar PDF" (no celular abre WhatsApp, e-mail…; no computador baixa
+// o arquivo), "Baixar PDF" e "Imprimir". O PDF é gerado no navegador.
 function abrirJanelaPdf(titulo, corpo, janela) {
-  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(titulo) + '</title>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=block" rel="stylesheet"><style>' + CSS_PDF + '</style></head><body>' + corpo +
-    '<script>window.onload=function(){setTimeout(function(){window.print()},700)}<\/script></body></html>';
+  const nomeArq = sem(titulo).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 90) + '.pdf';
+  const barra = '<div class="barra-pdf"><b>' + esc(titulo) + '</b><span style="flex:1"></span>' +
+    '<button class="bp prim" onclick="compartilharPdf()">⤴ Compartilhar PDF</button><button class="bp" onclick="baixarArquivo()">⬇ Baixar PDF</button><button class="bp" onclick="window.print()">🖨 Imprimir</button></div>';
+  const css = CSS_PDF + '@media screen{body{background:#E9EEF5;padding:64px 0 30px}#doc{width:794px;margin:0 auto;background:#fff;box-shadow:0 4px 24px rgba(14,27,44,.15)}}' +
+    '.barra-pdf{position:fixed;top:0;left:0;right:0;z-index:9;display:flex;gap:8px;align-items:center;padding:10px 16px;background:#0E1B2C;color:#fff;font-family:Inter,Arial,sans-serif;font-size:13px}.barra-pdf b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.bp{font:inherit;font-weight:700;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#24384F;color:#fff;white-space:nowrap}.bp.prim{background:#2F7BFF}.bp:disabled{opacity:.6}' +
+    'body.gerando{padding:0!important;background:#fff!important}body.gerando #doc{margin:0!important;box-shadow:none!important;zoom:1!important}body.gerando .barra-pdf{display:none}' +
+    '@media(max-width:820px){#doc{zoom:.46}.barra-pdf b{display:none}.bp{padding:9px 10px;font-size:12px}}@media print{.barra-pdf{display:none}#doc{width:auto;box-shadow:none}}';
+  const script = '<script>' +
+    'var libPdf=new Promise(function(ok,erro){var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js";s.onload=ok;s.onerror=function(){erro(new Error("Gerador de PDF não carregou. Verifique a internet."))};document.head.appendChild(s);});' +
+    'var NOME=' + JSON.stringify(nomeArq) + ',TITULO=' + JSON.stringify(titulo) + ',cache=null;' +
+    'function ocupado(t){document.querySelectorAll(".bp").forEach(function(b){b.disabled=!!t});var p=document.querySelector(".bp.prim");if(p)p.textContent=t||"⤴ Compartilhar PDF";}' +
+    'async function gerar(){if(cache)return cache;await libPdf;' +
+    'var el=document.getElementById("doc");var z=el.style.zoom;el.style.zoom=1;document.body.classList.add("gerando");window.scrollTo(0,0);try{cache=await html2pdf().set({margin:[0,0,0,0],filename:NOME,image:{type:"jpeg",quality:0.92},html2canvas:{scale:2,useCORS:true,scrollX:0,scrollY:0},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"],avoid:[".item","tr",".k",".kpis",".caixa"]}}).from(el).outputPdf("blob");}finally{el.style.zoom=z;document.body.classList.remove("gerando");}return cache;}' +
+    'function baixarBlob(b){var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=NOME;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},2000);}' +
+    'async function baixarArquivo(){ocupado("Gerando PDF…");try{baixarBlob(await gerar());}catch(e){alert(e.message)}finally{ocupado("")}}' +
+    'async function compartilharPdf(){ocupado("Gerando PDF…");try{var b=await gerar();var f=new File([b],NOME,{type:"application/pdf"});' +
+    'if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:TITULO});}catch(e){if(e.name!=="AbortError")baixarBlob(b);}}' +
+    'else{baixarBlob(b);alert("PDF baixado. Agora é só anexar no WhatsApp ou no e-mail.");}}catch(e){alert(e.message)}finally{ocupado("")}}' +
+    '<\/script>';
+  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(titulo) + '</title>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=block" rel="stylesheet"><style>' + css + '</style></head><body>' + barra + '<div id="doc">' + corpo + '</div>' + script + '</body></html>';
   const w = janela || window.open('', '_blank');
-  if (!w) { toast('Libere as janelas pop-up para baixar o PDF.', 'erro'); return; }
+  if (!w) { toast('Libere as janelas pop-up para abrir o PDF.', 'erro'); return; }
   w.document.open(); w.document.write(html); w.document.close();
 }
 function baixarPdf() {
