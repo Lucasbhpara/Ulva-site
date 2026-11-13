@@ -1068,6 +1068,7 @@ async function carregarBase() {
   let visitas = v.data || [];
   if (!ehResp()) visitas = visitas.filter((x) => String(x.veterinario_matricula || '') === String(estado.usuario.matricula) || sem(x.veterinario_nome) === sem(estado.usuario.nome));
   estado.visitas = visitas; estado.perguntas = p.data || [];
+  try { await carregarRotas(true); } catch (e) { estado.rotas = estado.rotas || { vets: [], lojas: {} }; }
   const ids = visitas.map((x) => x.tarefa_id).filter(Boolean);
   estado.tarefas = [];
   for (let i = 0; i < ids.length; i += 150) {
@@ -1075,14 +1076,19 @@ async function carregarBase() {
     estado.tarefas.push(...(data || []));
   }
 }
+// Veterinários da planilha de rotas (vt_veterinarios). As visitas guardam o
+// nome do cadastro do app; a ligação é pelo primeiro nome (visitaDoVet).
+function vetsPlanilha() { return (estado.rotas?.vets || []).filter((x) => !/^sem veterin/i.test(x.nome)); }
+function vetDaVisita(v) { return vetsPlanilha().find((x) => visitaDoVet(v, x)) || null; }
+function nomeVet(v) { const x = vetDaVisita(v); return x ? x.nome : v.veterinario_nome; }
 function visitasFiltradas() {
   const f = estado.filtros, lim = f.periodo ? Date.now() - Number(f.periodo) * 864e5 : 0;
-  return estado.visitas.filter((v) => (!lim || new Date(v.finalizada_em).getTime() >= lim) && (!f.unidade || String(v.unidade || '') === f.unidade) && (!f.setor || v.setor === f.setor) && (!f.vet || v.veterinario_nome === f.vet));
+  return estado.visitas.filter((v) => (!lim || new Date(v.finalizada_em).getTime() >= lim) && (!f.unidade || String(v.unidade || '') === f.unidade) && (!f.setor || v.setor === f.setor) && (!f.vet || v.veterinario_nome === f.vet || nomeVet(v) === f.vet));
 }
 function filtrosHtml(comVet) {
   const f = estado.filtros;
   const uns = [...new Set(estado.visitas.map((v) => String(v.unidade || '')).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
-  const vets = [...new Set(estado.visitas.map((v) => v.veterinario_nome).filter(Boolean))].sort();
+  const vets = [...new Set(vetsPlanilha().map((x) => x.nome).concat(estado.visitas.map((v) => nomeVet(v)).filter(Boolean)))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const sel = (id, val, ops) => '<select class="select-filtro" onchange="estado.filtros.' + id + '=this.value;renderizar()">' + ops.map(([k, t]) => '<option value="' + esc(k) + '"' + (k === val ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '</select>';
   return '<div class="filtros-vt">' +
     sel('periodo', f.periodo, [['30', 'Últimos 30 dias'], ['90', 'Últimos 90 dias'], ['365', 'Últimos 12 meses'], ['', 'Todo o período']]) +
@@ -1221,7 +1227,8 @@ async function paginaMapa() {
   document.getElementById('conteudo-principal').innerHTML =
     cabecalho('Mapa dos veterinários', 'Última posição de cada técnico e o trajeto — a posição é enviada a cada 5 min enquanto a Visita Técnica está aberta no celular') +
     '<div class="mapa-layout"><div class="item-card" style="padding:0;overflow:hidden"><div id="mapa-grande" class="mapa-vt"></div></div>' +
-    '<div><div class="item-card"><div class="card-tit" style="padding:0 0 8px">Veterinários</div>' + (vets || '<div class="celula-vazio" style="padding:20px">Nenhuma posição recebida ainda. Aparece quando o veterinário abrir a Visita Técnica no app.</div>') + '</div>' +
+    '<div><div class="item-card"><div class="card-tit" style="padding:0 0 8px">Veterinários</div>' + (vets || '<div class="celula-vazio" style="padding:14px">Nenhuma posição recebida ainda. Aparece quando o veterinário abrir a Visita Técnica no app.</div>') +
+      (() => { const sem = vetsPlanilha().filter((x) => !lista.some((p) => visitaDoVet({ veterinario_nome: p.nome }, x))); return sem.length ? '<div class="sub-box" style="margin-top:10px"><b>Sem posição ainda:</b> ' + sem.map((x) => esc(x.nome)).join(', ') + '</div>' : ''; })() + '</div>' +
     (estado.vetMapa ? '<div class="item-card" style="margin-top:14px"><div class="card-tit" style="padding:0 0 8px">Trajeto</div><div class="chips-wrap" style="margin-bottom:10px">' + janelas + '</div><div id="paradas" class="sub-box">Carregando…</div></div>' : '<div class="sub-box" style="margin-top:12px">Clique num veterinário para ver o trajeto.</div>') +
     '</div></div>';
   await desenharMapa('mapa-grande', { janela: estado.vetMapa ? estado.mapaJanela : 0, vet: estado.vetMapa });
@@ -1501,16 +1508,26 @@ async function paginaVeterinarios() {
   if (!ehResp()) return irPara('visitas');
   const { data: pos } = await sb.from('veterinarios_posicao_atual').select('*');
   const ini = new Date(); ini.setDate(1); ini.setHours(0, 0, 0, 0);
-  const porVet = {};
-  estado.visitas.forEach((v) => { const k = v.veterinario_nome || '—'; (porVet[k] = porVet[k] || []).push(v); });
-  const linhas = Object.entries(porVet).map(([nome, l]) => {
+  const posDe = (vet, l) => (pos || []).find((x) => visitaDoVet({ veterinario_nome: x.nome }, vet) || (l[0] && x.matricula === l[0].veterinario_matricula));
+  const linha = (vet, l, extra) => {
     const mes = l.filter((v) => new Date(v.finalizada_em) >= ini);
     const media = mediaNota(l);
-    const p = (pos || []).find((x) => sem(x.nome) === sem(nome) || x.matricula === l[0].veterinario_matricula);
-    return '<tr><td style="font-weight:700">' + esc(nome) + '</td><td>' + mes.length + '</td><td>' + l.length + '</td><td>' + [...new Set(mes.map((v) => v.unidade))].length + '</td><td>' + (media == null ? '—' : media.toFixed(1).replace('.', ',') + '%') + '</td><td>' + dataHora(l[0].finalizada_em) + '</td><td>' + (p ? haQuanto(p.registrado_em) + (p.unidade ? ' · loja ' + esc(p.unidade) : '') + ' <a class="link-vt" onclick="estado.vetMapa=\'' + esc(p.matricula) + '\';irPara(\'mapa\')">ver no mapa</a>' : '—') + '</td></tr>';
-  }).join('');
-  document.getElementById('conteudo-principal').innerHTML = cabecalho('Veterinários', 'Desempenho de cada técnico e onde foi visto por último') +
-    '<div class="tabela-wrap"><table><thead><tr><th>Veterinário</th><th>Visitas no mês</th><th>Visitas no total</th><th>Lojas no mês</th><th>Nota média dada</th><th>Última visita</th><th>Última posição</th></tr></thead><tbody>' + (linhas || '<tr><td colspan="7" class="celula-vazio">Nenhuma visita ainda.</td></tr>') + '</tbody></table></div>';
+    const p = vet ? posDe(vet, l) : null;
+    const sups = vet ? [...new Set(vet.rota.map((r) => r.supervisor).filter(Boolean))] : [];
+    return '<tr><td><div style="display:flex;align-items:center;gap:8px">' + (vet ? '<span class="ponto-cor" style="background:' + vet.cor + '"></span>' : '') + '<div><div style="font-weight:700">' + esc(vet ? vet.nome : extra) + '</div>' + (vet && vet.contato && vet.contato.length ? '<div class="sub-box">' + esc(vet.contato.join(' · ')) + '</div>' : '') + '</div></div></td>' +
+      '<td>' + (vet ? vet.rota.length : '—') + (sups.length ? '<div class="sub-box">sup. ' + esc(sups.join(', ')) + '</div>' : '') + '</td>' +
+      '<td>' + mes.length + '</td><td>' + [...new Set(mes.map((v) => v.unidade))].length + '</td><td>' + (media == null ? '—' : media.toFixed(1).replace('.', ',') + '%') + '</td><td>' + (l[0] ? dataHora(l[0].finalizada_em) : '—') + '</td>' +
+      '<td>' + (p ? haQuanto(p.registrado_em) + (p.unidade ? ' · loja ' + esc(p.unidade) : '') + ' <a class="link-vt" onclick="estado.vetMapa=\'' + esc(p.matricula) + '\';irPara(\'mapa\')">ver no mapa</a>' : '—') + '</td>' +
+      '<td style="white-space:nowrap">' + (vet ? '<a class="link-vt" onclick="estado.vetRota=' + vet.id + ';irPara(\'rotas\')">rota</a> · <a class="link-vt" onclick="abrirRelatorioSemana(' + vet.id + ')">relatório</a>' : '') + '</td></tr>';
+  };
+  const vets = vetsPlanilha();
+  const usados = new Set();
+  const linhas = vets.map((vet) => { const l = estado.visitas.filter((v) => visitaDoVet(v, vet)); l.forEach((v) => usados.add(v.id)); return linha(vet, l); });
+  const outros = {}; estado.visitas.filter((v) => !usados.has(v.id)).forEach((v) => { const k = v.veterinario_nome || '—'; (outros[k] = outros[k] || []).push(v); });
+  Object.entries(outros).forEach(([n, l]) => linhas.push(linha(null, l, n + ' (fora da planilha)')));
+  document.getElementById('conteudo-principal').innerHTML = cabecalho('Veterinários', vets.length + ' técnicos da planilha de rotas · desempenho, rota e onde foi visto por último') +
+    '<div class="tabela-wrap"><table><thead><tr><th>Veterinário</th><th>Lojas na rota</th><th>Visitas no mês</th><th>Lojas no mês</th><th>Nota média dada</th><th>Última visita</th><th>Última posição</th><th></th></tr></thead><tbody>' + (linhas.join('') || '<tr><td colspan="8" class="celula-vazio">Nenhum veterinário.</td></tr>') + '</tbody></table></div>' +
+    '<div class="sub-box" style="margin-top:10px">Para o veterinário entrar no app e no portal, o cadastro dele no ULVA precisa ter a função com a palavra "Veterinário" e o mesmo primeiro nome da planilha.</div>';
 }
 
 // ---------------------------------------------------------------- rotas dos veterinários
@@ -1760,13 +1777,32 @@ async function iniciarDemo() {
   let semente = 327;
   const rnd = () => ((semente = (semente * 16807) % 2147483647) / 2147483647);
   const escolhe = (l) => l[Math.floor(rnd() * l.length)];
-  const VETS = [{ m: '79735894', n: 'Guilherme' }, { m: 'D2', n: 'Mariana Duarte' }, { m: 'D3', n: 'Rafael Nogueira' }];
-  const LOJAS = [
+  let VETS = [{ m: '79735894', n: 'Guilherme' }, { m: 'D2', n: 'Mariana Duarte' }, { m: 'D3', n: 'Rafael Nogueira' }];
+  let LOJAS = [
     ['327', 'Itatiaiuçu', -20.1987, -44.4207], ['296', 'Betim', -19.9678, -44.1983], ['301', 'Contagem', -19.9317, -44.0539],
     ['312', 'Igarapé', -20.0707, -44.3020], ['318', 'Mateus Leme', -19.9864, -44.4291], ['340', 'Brumadinho', -20.1438, -44.2007],
     ['355', 'Belo Horizonte', -19.9245, -43.9352], ['362', 'Sarzedo', -20.0369, -44.1446],
   ];
-  const lojaVet = { '79735894': ['327', '312', '318', '340'], D2: ['296', '301', '362'], D3: ['355', '301', '296', '362'] };
+  let lojaVet = { '79735894': ['327', '312', '318', '340'], D2: ['296', '301', '362'], D3: ['355', '301', '296', '362'] };
+  let BASES = { '327': 84, '296': 76, '301': 69, '312': 88, '318': 72, '340': 80, '355': 64, '362': 78 };
+  // Com a planilha de rotas carregada, a demonstração usa os veterinários e
+  // as lojas reais (só as visitas e posições são simuladas).
+  try {
+    const [rv, rr, rl] = await Promise.all([real.from('vt_veterinarios').select('*').eq('ativo', true).order('ordem'), real.from('vt_rota_lojas').select('*').order('ordem'), real.from('vt_lojas').select('*')]);
+    const lojasR = {}; (rl.data || []).forEach((x) => (lojasR[x.numero] = x));
+    const vr = (rv.data || []).filter((x) => x.lat != null && !/^sem veterin|provis/i.test(x.nome)).slice(0, 8);
+    if (vr.length) {
+      VETS = []; LOJAS = []; lojaVet = {}; BASES = {};
+      vr.forEach((x) => {
+        const m = 'V' + x.id;
+        const ls = (rr.data || []).filter((r) => r.vet_id === x.id).map((r) => lojasR[r.loja]).filter((l) => l && l.lat != null).slice(0, 5);
+        if (!ls.length) return;
+        VETS.push({ m, n: x.nome.split('/')[0].trim() });
+        lojaVet[m] = ls.map((l) => l.numero);
+        ls.forEach((l) => { if (!LOJAS.some((y) => y[0] === l.numero)) { LOJAS.push([l.numero, l.nome, l.lat, l.lng]); BASES[l.numero] = 62 + Math.round(rnd() * 28); } });
+      });
+    }
+  } catch (e) {}
   const setores = SETORES.map((s) => s.key);
   const hora = 3600e3, agora = Date.now();
   const db = { visitas_tecnicas: [], visita_tecnica_respostas: [], tarefas: [], correcao_itens: [], localizacao_veterinario: [], veterinarios_posicao_atual: [], visita_tecnica_perguntas: perguntas };
@@ -1781,7 +1817,7 @@ async function iniciarDemo() {
       const qtd = 1 + Math.floor(rnd() * 3);
       for (let k = 0; k < qtd; k++) {
         const setor = escolhe(setores);
-        const base = { '327': 84, '296': 76, '301': 69, '312': 88, '318': 72, '340': 80, '355': 64, '362': 78 }[u];
+        const base = BASES[u] ?? 78;
         const pct = Math.max(42, Math.min(100, Math.round(base + (rnd() - 0.5) * 22 + (90 - dia) * 0.06)));
         const pPos = (perguntas.filter((p) => p.setor === setor).length || 20) * 2;
         const nc = Math.max(0, Math.round((100 - pct) / 100 * pPos / 2));
