@@ -1278,6 +1278,16 @@ function livreHtmlPdf(d) {
       (fotosDe(r).length ? '<div class="fotos">' + fotosDe(r).map((u) => '<img class="foto" src="' + u + '">').join('') + '</div>' : '') + '<div class="det" style="margin-top:6px">Corrigido em ____/____ por _______________________</div></div>').join('')
       : '<div class="item"><div class="topo"><div class="texto" style="color:#8A93A5">Sem apontamentos</div><span class="badge b-sim">OK</span></div></div>')).join('');
 }
+// Responsável da loja que acompanhou a visita (nome, função e assinatura).
+function acompanhanteHtml(v, pdf) {
+  if (!v.acompanhante_nome && !v.acompanhante_ausente) return '';
+  if (v.acompanhante_ausente) return pdf ? '<div class="assin"><div class="assin-tit">Acompanhado por</div><div class="assin-sem">Sem responsável da loja acompanhando a visita.</div></div>' : '<h3 class="tit-secao">Acompanhado por</h3><div class="item-card sub-box">Sem responsável da loja acompanhando a visita.</div>';
+  const a = v.acompanhante_assinatura;
+  const svg = a && a.tracos ? '<svg viewBox="0 0 ' + a.largura + ' ' + a.altura + '" width="220" height="74" preserveAspectRatio="xMidYMid meet"><path d="' + esc(a.tracos) + '" fill="none" stroke="#121B4A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '';
+  const nome = esc(v.acompanhante_nome) + (v.acompanhante_funcao ? ' · ' + esc(v.acompanhante_funcao) : '');
+  return pdf ? '<div class="assin"><div class="assin-tit">Acompanhado por</div><div class="assin-linha">' + svg + '</div><div class="assin-nome">' + nome + '</div></div>'
+    : '<h3 class="tit-secao">Acompanhado por</h3><div class="item-card" style="text-align:center"><div style="border-bottom:1px solid #8A93A5;padding-bottom:4px">' + svg + '</div><div style="font-weight:700;margin-top:6px">' + nome + '</div></div>';
+}
 function planoAcao(d) {
   const nc = d.respostas.filter((r) => r.resposta === 'nao');
   const resp = d.v.setor === 'geral' ? 'Gerência' : 'Encarregado · ' + nomeSetor(d.v.setor);
@@ -1323,7 +1333,7 @@ async function abrirVisita(id) {
       kpiBox('Críticos reprovados', v.criticos_nao_conformes || 0, (v.criticos_nao_conformes || 0) ? 'var(--red)' : 'var(--green)') +
       kpiBox('Correção', statusCorrecao(d.tarefa).txt) +
     '</div>' + itens) +
-    (v.consideracoes_finais ? '<h3 class="tit-secao">Considerações finais</h3><div class="item-card" style="white-space:pre-wrap">' + esc(v.consideracoes_finais) + '</div>' : '') + plano;
+    (v.consideracoes_finais ? '<h3 class="tit-secao">Considerações finais</h3><div class="item-card" style="white-space:pre-wrap">' + esc(v.consideracoes_finais) + '</div>' : '') + plano + acompanhanteHtml(v, false);
 }
 
 // ---------------------------------------------------------------- PDF (mesmo visual dos PDFs do app)
@@ -1356,7 +1366,7 @@ function folhaPdf(d) {
     : kpi('Aproveitamento', pct + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor, comp) + kpi('Pontos', v.pontos_realizados + ' / ' + v.pontos_possiveis) + kpi('Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D');
   const corpo = (v.localizacao_lat != null ? '<div class="info">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + '</div>' : '') +
     '<div class="kpis">' + kpisHtml + '</div>' +
-    (semNota(v) ? livreHtmlPdf(d) : itens + plano) + (v.consideracoes_finais ? '<div class="lbl">Considerações finais</div><div class="caixa">' + esc(v.consideracoes_finais) + '</div>' : '') + '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div>';
+    (semNota(v) ? livreHtmlPdf(d) : itens + plano) + (v.consideracoes_finais ? '<div class="lbl">Considerações finais</div><div class="caixa">' + esc(v.consideracoes_finais) + '</div>' : '') + acompanhanteHtml(v, true) + '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div>';
   return '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica</div><h1>' + esc(nomeSetor(v.setor)) + '</h1></div></div><div class="d">' + (numeroDoc(v) ? '<span class="ndoc">Nº ' + numeroDoc(v) + '</span><br>' : '') + 'Loja ' + esc(v.unidade || '—') + '<br>Téc. veterinário: ' + esc(v.veterinario_nome) + '<br>Finalizada em ' + dataHora(v.finalizada_em) + '</div></div>' +
     '<div class="wrap">' + corpo + '</div>' + rodapePdf();
 }
@@ -1429,7 +1439,7 @@ async function baixarPdfCompleto() {
   abrirJanelaPdf('Visita técnica — Loja ' + (v.unidade || '') + ' — ' + new Date(v.finalizada_em).toLocaleDateString('pt-BR'), folhas, janela);
 }
 const LOGO_PDF = '<svg width="38" height="38" viewBox="0 0 160 160"><rect width="160" height="160" rx="32" fill="#16294A"/><path d="M42 36 V84 A38 38 0 0 0 118 84 V36" fill="none" stroke="#F4F5F7" stroke-width="20" stroke-linecap="round"/><circle cx="80" cy="74" r="15" fill="#2F7BFF"/></svg>';
-const CSS_PDF = "@page{size:A4;margin:10mm 0 12mm}@page:first{margin-top:0}*{box-sizing:border-box}html,body{margin:0}body{font-family:Inter,Roboto,'Helvetica Neue',Arial,sans-serif;color:#0B1220;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+const CSS_PDF = ".assin{margin-top:16px;border:1px solid #E3E7EE;border-radius:10px;padding:10px 14px;page-break-inside:avoid;break-inside:avoid}.assin-tit{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#8A93A5;font-weight:700}.assin-linha{border-bottom:1px solid #8A93A5;min-height:60px;display:flex;align-items:flex-end;justify-content:center}.assin-nome{text-align:center;font-size:11.5px;font-weight:700;color:#0E1B2C;margin-top:4px}.assin-sem{font-size:11.5px;color:#5B6280;margin-top:4px}" + "@page{size:A4;margin:10mm 0 12mm}@page:first{margin-top:0}*{box-sizing:border-box}html,body{margin:0}body{font-family:Inter,Roboto,'Helvetica Neue',Arial,sans-serif;color:#0B1220;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
   ".hdr{background:#0E1B2C;color:#fff;padding:18px 26px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}.hdr .t{font-size:10.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:#8FA3C4}.hdr h1{font-size:21px;margin:3px 0 0;font-weight:700}.hdr .d{text-align:right;font-size:11px;color:#C9D3E5;line-height:1.5}" +
   ".ndoc{display:inline-block;margin-bottom:3px;padding:2px 8px;border:1px solid #2C4468;border-radius:4px;color:#fff;font-weight:600;letter-spacing:.06em;font-size:10.5px}.wrap{padding:18px 26px 8px}" +
   ".lbl{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#6B7486;font-weight:700;margin:18px 0 8px;display:flex;align-items:center;gap:8px;page-break-after:avoid}.lbl:after{content:'';flex:1;height:1px;background:#E3E7EE}.lbl .q{letter-spacing:.02em;text-transform:none;font-weight:600;color:#8A93A5}" +
@@ -1825,7 +1835,7 @@ async function iniciarDemo() {
         const fim = new Date(d); fim.setHours(8 + iv + k * 2, Math.floor(rnd() * 59), 0, 0);
         if (fim.getTime() > agora) continue;
         num++;
-        const vis = { id: 'dv' + num, numero: num, setor, status: 'finalizada', unidade: u, veterinario_nome: v.n, veterinario_matricula: v.m, iniciada_em: iso(fim.getTime() - 50 * 60000), finalizada_em: iso(fim.getTime()), aproveitamento: pct, pontos_realizados: Math.round(pPos * pct / 100), pontos_possiveis: pPos, nao_conformidades: nc, criticos_nao_conformes: crit, localizacao_lat: loja[2] + (rnd() - 0.5) * 0.002, localizacao_lng: loja[3] + (rnd() - 0.5) * 0.002, localizacao_endereco: 'Supermercados BH · ' + loja[1], tarefa_id: null, consideracoes_finais: pct < 70 ? 'Reforçar treinamento da equipe e acompanhar as correções nos próximos 7 dias.' : null };
+        const vis = { id: 'dv' + num, numero: num, setor, status: 'finalizada', unidade: u, veterinario_nome: v.n, veterinario_matricula: v.m, iniciada_em: iso(fim.getTime() - 50 * 60000), finalizada_em: iso(fim.getTime()), aproveitamento: pct, pontos_realizados: Math.round(pPos * pct / 100), pontos_possiveis: pPos, nao_conformidades: nc, criticos_nao_conformes: crit, localizacao_lat: loja[2] + (rnd() - 0.5) * 0.002, localizacao_lng: loja[3] + (rnd() - 0.5) * 0.002, localizacao_endereco: 'Supermercados BH · ' + loja[1], tarefa_id: null, acompanhante_nome: escolhe(['José Carlos', 'Marcos Vinícius', 'Adriana Souza', 'Paulo Henrique']), acompanhante_funcao: setor === 'geral' ? 'Gerente' : 'Encarregado', acompanhante_assinatura: { largura: 300, altura: 100, tracos: escolhe(['M20 70 L40 40 L60 72 L80 35 L100 70 L130 50 L160 65 M180 30 L190 75 L230 55 L270 60', 'M30 60 L55 30 L70 75 L95 40 L120 70 L150 45 L190 68 L240 50', 'M25 75 L45 35 L75 70 L90 45 L115 72 M140 40 L160 72 L200 52 L260 66']) }, consideracoes_finais: pct < 70 ? 'Reforçar treinamento da equipe e acompanhar as correções nos próximos 7 dias.' : null };
         // Últimas 3 semanas: metade das visitas no modelo livre (apontamentos, sem nota).
         if (dia <= 20 && setor !== 'geral' && rnd() < 0.5) {
           vis.aproveitamento = null; vis.pontos_realizados = null; vis.pontos_possiveis = null; vis.criticos_nao_conformes = 0;
