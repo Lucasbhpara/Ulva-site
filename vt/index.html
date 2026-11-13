@@ -1118,9 +1118,17 @@ function statusCorrecao(t) {
   if (t.correcao_status === 'devolvida') return { txt: 'Devolvida', cls: 'vermelho' };
   return { txt: 'Pendente', cls: 'vermelho' };
 }
+// Modelo livre (apontamentos, sem nota): aproveitamento nulo. Fica fora das
+// médias; no lugar da nota mostra quantos apontamentos teve.
+function semNota(v) { return v.aproveitamento == null; }
+function mediaNota(l) { const c = l.filter((v) => !semNota(v)); return c.length ? c.reduce((a, v) => a + Number(v.aproveitamento), 0) / c.length : null; }
+function pillNota(v) {
+  if (semNota(v)) return '<span class="pill" style="background:#E7EBF3;color:#3B4A6B">' + ((v.nao_conformidades || 0) ? v.nao_conformidades + ' apont.' : 'Sem apont.') + '</span>';
+  const b = banda(Number(v.aproveitamento)); return '<span class="pill ' + b.classe + '">' + v.aproveitamento + '%</span>';
+}
 function paginaGeral() {
   const vs = visitasFiltradas();
-  const media = vs.length ? vs.reduce((a, v) => a + Number(v.aproveitamento || 0), 0) / vs.length : null;
+  const media = mediaNota(vs);
   const nc = vs.reduce((a, v) => a + (v.nao_conformidades || 0), 0);
   const crit = vs.reduce((a, v) => a + (v.criticos_nao_conformes || 0), 0);
   const comTarefa = vs.filter((v) => v.tarefa_id);
@@ -1128,18 +1136,18 @@ function paginaGeral() {
   // por loja
   const porLoja = {};
   vs.forEach((v) => { const u = String(v.unidade || '—'); (porLoja[u] = porLoja[u] || []).push(v); });
-  const lojas = Object.entries(porLoja).map(([u, l]) => ({ u, n: l.length, media: l.reduce((a, v) => a + Number(v.aproveitamento || 0), 0) / l.length, crit: l.reduce((a, v) => a + (v.criticos_nao_conformes || 0), 0), ultima: l[0] })).sort((a, b) => a.media - b.media);
-  const linhasLoja = lojas.map((l) => { const b = banda(l.media); return '<tr class="linha-clicavel" onclick="estado.filtros.unidade=\'' + esc(l.u) + '\';irPara(\'visitas\')"><td style="font-weight:800">Loja ' + esc(l.u) + '</td><td>' + l.n + '</td><td><span class="pill ' + b.classe + '">' + l.media.toFixed(1).replace('.', ',') + '% · ' + b.texto + '</span></td><td style="' + (l.crit ? 'color:var(--red);font-weight:800' : '') + '">' + l.crit + '</td><td>' + dataCurta(l.ultima.finalizada_em) + ' · ' + esc(nomeSetor(l.ultima.setor)) + '</td></tr>'; }).join('');
+  const lojas = Object.entries(porLoja).map(([u, l]) => ({ u, n: l.length, media: mediaNota(l), apont: l.filter(semNota).reduce((a, v) => a + (v.nao_conformidades || 0), 0), crit: l.reduce((a, v) => a + (v.criticos_nao_conformes || 0), 0), ultima: l[0] })).sort((a, b) => (a.media == null ? 999 : a.media) - (b.media == null ? 999 : b.media));
+  const linhasLoja = lojas.map((l) => { const b = banda(l.media == null ? 100 : l.media); return '<tr class="linha-clicavel" onclick="estado.filtros.unidade=\'' + esc(l.u) + '\';irPara(\'visitas\')"><td style="font-weight:800">Loja ' + esc(l.u) + '</td><td>' + l.n + '</td><td>' + (l.media == null ? '<span class="pill" style="background:#E7EBF3;color:#3B4A6B">Sem nota · ' + l.apont + ' apont.</span>' : '<span class="pill ' + b.classe + '">' + l.media.toFixed(1).replace('.', ',') + '% · ' + b.texto + '</span>') + '</td><td style="' + (l.crit ? 'color:var(--red);font-weight:800' : '') + '">' + l.crit + '</td><td>' + dataCurta(l.ultima.finalizada_em) + ' · ' + esc(nomeSetor(l.ultima.setor)) + '</td></tr>'; }).join('');
   // por setor
-  const setores = SETORES.map((s) => { const l = vs.filter((v) => v.setor === s.key); return { s, n: l.length, media: l.length ? l.reduce((a, v) => a + Number(v.aproveitamento || 0), 0) / l.length : null, nc: l.reduce((a, v) => a + (v.nao_conformidades || 0), 0) }; }).filter((x) => x.n);
-  const barras = setores.map((x) => { const b = banda(x.media); return '<div class="barra-vt"><span class="bn">' + esc(x.s.nome) + '</span><span class="bt"><i style="width:' + Math.max(2, x.media) + '%;background:' + b.cor + '"></i></span><span class="bv">' + x.media.toFixed(0) + '%</span><span class="bq">' + x.nc + ' NC</span></div>'; }).join('');
+  const setores = SETORES.map((s) => { const l = vs.filter((v) => v.setor === s.key); return { s, n: l.length, media: mediaNota(l), nc: l.reduce((a, v) => a + (v.nao_conformidades || 0), 0) }; }).filter((x) => x.n);
+  const barras = setores.map((x) => { if (x.media == null) return '<div class="barra-vt"><span class="bn">' + esc(x.s.nome) + '</span><span class="bt"></span><span class="bv">—</span><span class="bq">' + x.nc + ' apont.</span></div>'; const b = banda(x.media); return '<div class="barra-vt"><span class="bn">' + esc(x.s.nome) + '</span><span class="bt"><i style="width:' + Math.max(2, x.media) + '%;background:' + b.cor + '"></i></span><span class="bv">' + x.media.toFixed(0) + '%</span><span class="bq">' + x.nc + ' NC</span></div>'; }).join('');
   const ultimas = vs.slice(0, 8).map((v) => linhaVisita(v)).join('');
   document.getElementById('conteudo-principal').innerHTML =
     cabecalho('Visão geral', 'Visitas técnicas de Boas Práticas e POPs nas lojas') + filtrosHtml(true) +
     '<div class="resumo-perdas">' +
       kpiBox('Visitas', vs.length) +
       kpiBox('Aproveitamento médio', media == null ? '—' : media.toFixed(1).replace('.', ',') + '%', media == null ? null : banda(media).cor, media == null ? '' : banda(media).texto) +
-      kpiBox('Não conformidades', nc, nc ? 'var(--red)' : 'var(--green)') +
+      kpiBox('Não conformidades / apontamentos', nc, nc ? 'var(--red)' : 'var(--green)') +
       kpiBox('Críticos reprovados', crit, crit ? 'var(--red)' : 'var(--green)') +
       kpiBox('Correções concluídas', comTarefa.length ? concl + ' / ' + comTarefa.length : '—', null, comTarefa.length ? Math.round(concl / comTarefa.length * 100) + '%' : '') +
     '</div>' +
@@ -1152,7 +1160,7 @@ function paginaGeral() {
 }
 function linhaVisita(v) {
   const b = banda(Number(v.aproveitamento || 0)), t = estado.tarefas.find((x) => x.id === v.tarefa_id), st = v.tarefa_id ? statusCorrecao(t) : { txt: '—', cls: '' };
-  return '<tr class="linha-clicavel" onclick="abrirVisita(\'' + v.id + '\')"><td class="mono">' + esc(numeroDoc(v) || '—') + '</td><td style="font-weight:800">' + esc(v.unidade || '—') + '</td><td>' + esc(nomeSetor(v.setor)) + '</td><td>' + dataHora(v.finalizada_em) + '</td><td>' + esc(v.veterinario_nome) + '</td><td><span class="pill ' + b.classe + '">' + v.aproveitamento + '%</span></td><td style="text-align:center">' + (v.nao_conformidades || 0) + '</td><td style="text-align:center;' + ((v.criticos_nao_conformes || 0) ? 'color:var(--red);font-weight:800' : '') + '">' + (v.criticos_nao_conformes || 0) + '</td><td>' + (st.cls ? '<span class="pill ' + st.cls + '">' + st.txt + '</span>' : st.txt) + '</td></tr>';
+  return '<tr class="linha-clicavel" onclick="abrirVisita(\'' + v.id + '\')"><td class="mono">' + esc(numeroDoc(v) || '—') + '</td><td style="font-weight:800">' + esc(v.unidade || '—') + '</td><td>' + esc(nomeSetor(v.setor)) + '</td><td>' + dataHora(v.finalizada_em) + '</td><td>' + esc(v.veterinario_nome) + '</td><td>' + pillNota(v) + '</td><td style="text-align:center">' + (v.nao_conformidades || 0) + '</td><td style="text-align:center;' + ((v.criticos_nao_conformes || 0) ? 'color:var(--red);font-weight:800' : '') + '">' + (v.criticos_nao_conformes || 0) + '</td><td>' + (st.cls ? '<span class="pill ' + st.cls + '">' + st.txt + '</span>' : st.txt) + '</td></tr>';
 }
 function tabelaVisitas(linhas) {
   return '<div class="tabela-wrap"><table><thead><tr><th>Nº</th><th>Loja</th><th>Setor</th><th>Finalizada</th><th>Veterinário</th><th>Nota</th><th style="text-align:center">NC</th><th style="text-align:center">Críticos</th><th>Correção</th></tr></thead><tbody>' + (linhas || '<tr><td colspan="9" class="celula-vazio">Nenhuma visita.</td></tr>') + '</tbody></table></div>';
@@ -1170,9 +1178,9 @@ async function desenharMapa(id, o) {
   const porLoja = {};
   visitasFiltradas().forEach((v) => { if (v.localizacao_lat != null && v.localizacao_lng != null) { const k = String(v.unidade || v.id); if (!porLoja[k]) porLoja[k] = v; } });
   Object.values(porLoja).forEach((v) => {
-    const b = banda(Number(v.aproveitamento || 0));
+    const b = semNota(v) ? { cor: '#5B6280' } : banda(Number(v.aproveitamento));
     L.circleMarker([v.localizacao_lat, v.localizacao_lng], { radius: 8, color: '#fff', weight: 2, fillColor: b.cor, fillOpacity: 0.95 })
-      .bindTooltip('Loja ' + esc(v.unidade || '—'), { permanent: !o.compacto, direction: 'top', offset: [0, -8], className: 'rotulo-loja' }).bindPopup('<b>Loja ' + esc(v.unidade || '—') + '</b><br>Última visita: ' + esc(nomeSetor(v.setor)) + ' · ' + v.aproveitamento + '%<br>' + dataHora(v.finalizada_em) + '<br>' + esc(v.veterinario_nome)).addTo(m);
+      .bindTooltip('Loja ' + esc(v.unidade || '—'), { permanent: !o.compacto, direction: 'top', offset: [0, -8], className: 'rotulo-loja' }).bindPopup('<b>Loja ' + esc(v.unidade || '—') + '</b><br>Última visita: ' + esc(nomeSetor(v.setor)) + ' · ' + (semNota(v) ? (v.nao_conformidades || 0) + ' apontamento(s)' : v.aproveitamento + '%') + '<br>' + dataHora(v.finalizada_em) + '<br>' + esc(v.veterinario_nome)).addTo(m);
     pontos.push([v.localizacao_lat, v.localizacao_lng]);
   });
   // veterinários: última posição
@@ -1231,16 +1239,40 @@ async function dadosVisita(id) {
     sb.from('visita_tecnica_respostas').select('*').eq('visita_id', id),
     v.tarefa_id ? sb.from('tarefas').select('*').eq('id', v.tarefa_id).maybeSingle() : Promise.resolve({ data: null }),
     v.tarefa_id ? sb.from('correcao_itens').select('*').eq('tarefa_id', v.tarefa_id).order('criado_em') : Promise.resolve({ data: [] }),
-    sb.from('visitas_tecnicas').select('aproveitamento, finalizada_em, numero').eq('setor', v.setor).eq('status', 'finalizada').eq('unidade', v.unidade || '').lt('finalizada_em', v.finalizada_em).order('finalizada_em', { ascending: false }).limit(1),
+    sb.from('visitas_tecnicas').select('aproveitamento, finalizada_em, numero').eq('setor', v.setor).eq('status', 'finalizada').eq('unidade', v.unidade || '').lt('finalizada_em', v.finalizada_em).order('finalizada_em', { ascending: false }).limit(15),
   ]);
-  return { v, respostas: resp || [], tarefa: tarefaR.data, itens: itensR.data || [], anterior: (antR.data || [])[0] || null };
+  return { v, respostas: resp || [], tarefa: tarefaR.data, itens: itensR.data || [], anterior: (antR.data || []).find((x) => x.aproveitamento != null) || null };
+}
+// Apontamentos do modelo livre, agrupados pelos 5 temas.
+const TEMAS_LIVRE = ['Limpeza', 'Organização', 'Validade / Tara', 'Planilhas e processos administrativos', 'Outros'];
+function apontamentosPorTema(d) {
+  const ap = d.respostas.filter((r) => r.resposta === 'nao');
+  const temas = TEMAS_LIVRE.concat([...new Set(ap.map((r) => r.pergunta_texto))].filter((t) => TEMAS_LIVRE.indexOf(t) < 0));
+  return temas.map((t) => ({ tema: t, lista: ap.filter((r) => r.pergunta_texto === t).sort((a, b) => (a.respondida_em < b.respondida_em ? -1 : 1)) }));
+}
+function fotosDe(r) { return (r.fotos_urls && r.fotos_urls.length) ? r.fotos_urls : (r.foto_url ? [r.foto_url] : []); }
+function livreHtmlPortal(d) {
+  let n = 0;
+  return apontamentosPorTema(d).map((g) => '<h4 class="grupo-vt">' + esc(g.tema) + (g.lista.length ? ' · ' + g.lista.length : '') + '</h4>' +
+    (g.lista.length ? g.lista.map((r) => '<div class="item-card resp-vt ruim"><div class="rt"><div>' + (++n) + '. ' + esc(r.justificativa || '(sem texto)') + '</div><span class="pill vermelho">Apontamento</span></div>' +
+      (fotosDe(r).length ? '<div class="fotos-vt">' + fotosDe(r).map((u) => '<a href="' + u + '" target="_blank"><img src="' + u + '"></a>').join('') + '</div>' : '') + '</div>').join('')
+      : '<div class="item-card resp-vt" style="opacity:.75"><div class="rt"><div>Sem apontamentos</div><span class="pill verde">OK</span></div></div>')).join('');
+}
+function livreHtmlPdf(d) {
+  let n = 0;
+  return apontamentosPorTema(d).map((g) => '<div class="lbl">' + esc(g.tema) + (g.lista.length ? ' <span class="q">· ' + g.lista.length + ' apontamento(s)</span>' : '') + '</div>' +
+    (g.lista.length ? g.lista.map((r) => '<div class="item ruim"><div class="topo"><div class="texto">' + (++n) + '. ' + esc(r.justificativa || '(sem texto)') + '</div><span class="badge b-nao">Corrigir</span></div>' +
+      (fotosDe(r).length ? '<div class="fotos">' + fotosDe(r).map((u) => '<img class="foto" src="' + u + '">').join('') + '</div>' : '') + '<div class="det" style="margin-top:6px">Corrigido em ____/____ por _______________________</div></div>').join('')
+      : '<div class="item"><div class="topo"><div class="texto" style="color:#8A93A5">Sem apontamentos</div><span class="badge b-sim">OK</span></div></div>')).join('');
 }
 function planoAcao(d) {
   const nc = d.respostas.filter((r) => r.resposta === 'nao');
   const resp = d.v.setor === 'geral' ? 'Gerência' : 'Encarregado · ' + nomeSetor(d.v.setor);
   const prazo = d.tarefa && d.tarefa.prazo;
-  const linhas = d.itens.length ? d.itens.map((i) => ({ item: i.pergunta_texto, critico: i.critico, st: i.aprovacao === 'aprovado' ? ['Concluído', 'verde'] : i.aprovacao === 'devolvido' ? ['Devolvido', 'vermelho'] : i.status === 'corrigido' ? ['Corrigido · aguardando', 'laranja'] : i.status === 'nao_possivel' ? ['Não foi possível', ''] : ['Pendente', 'vermelho'], quem: i.respondido_por }))
-    : nc.map((r) => ({ item: r.pergunta_texto, critico: r.critico, st: ['Pendente', 'vermelho'], quem: null }));
+  const porId = {}; d.respostas.forEach((r) => { porId[r.id] = r; });
+  const rotuloItem = (texto, rid) => (semNota(d.v) && porId[rid] && porId[rid].justificativa ? texto + ' — ' + porId[rid].justificativa : texto);
+  const linhas = d.itens.length ? d.itens.map((i) => ({ item: rotuloItem(i.pergunta_texto, i.resposta_id), critico: i.critico, st: i.aprovacao === 'aprovado' ? ['Concluído', 'verde'] : i.aprovacao === 'devolvido' ? ['Devolvido', 'vermelho'] : i.status === 'corrigido' ? ['Corrigido · aguardando', 'laranja'] : i.status === 'nao_possivel' ? ['Não foi possível', ''] : ['Pendente', 'vermelho'], quem: i.respondido_por }))
+    : nc.map((r) => ({ item: rotuloItem(r.pergunta_texto, r.id), critico: r.critico, st: ['Pendente', 'vermelho'], quem: null }));
   return { linhas, resp, prazo };
 }
 async function abrirVisita(id) {
@@ -1270,13 +1302,14 @@ async function abrirVisita(id) {
     '<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap"><button class="btn-acao secundario" onclick="renderizar()">‹ Voltar</button><button class="btn-acao" onclick="baixarPdf()">⬇ Baixar PDF</button>' + (visitasDoDia(v).length > 1 ? '<button class="btn-acao" onclick="baixarPdfCompleto()">🖨 PDF completo do dia (' + visitasDoDia(v).length + ' setores, um por folha)</button>' : '') + '</div>' +
     cabecalho(nomeSetor(v.setor) + ' · Loja ' + esc(v.unidade || '—'), (numeroDoc(v) ? '<b>Nº ' + numeroDoc(v) + '</b> · ' : '') + 'Técnico veterinário: ' + esc(v.veterinario_nome) + ' · finalizada em ' + dataHora(v.finalizada_em), ' ') +
     (v.localizacao_lat != null ? '<div class="sub-box" style="margin:-16px 0 16px">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + ' — <a href="https://www.google.com/maps?q=' + v.localizacao_lat + ',' + v.localizacao_lng + '" target="_blank">ver no mapa</a></div>' : '') +
+    (semNota(v) ? '<div class="resumo-perdas">' + kpiBox('Modelo', 'Apontamentos livres', null, 'sem nota') + kpiBox('Apontamentos', v.nao_conformidades || 0, (v.nao_conformidades || 0) ? 'var(--red)' : 'var(--green)') + kpiBox('Correção', statusCorrecao(d.tarefa).txt) + '</div>' + livreHtmlPortal(d) :
     '<div class="resumo-perdas">' +
       kpiBox('Aproveitamento', v.aproveitamento + '%', b.cor, b.texto + (delta == null ? ' · primeira visita do setor' : ' · ' + (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(1).replace('.', ',') + ' pts vs ' + dataCurta(d.anterior.finalizada_em))) +
       kpiBox('Pontos', v.pontos_realizados + ' / ' + v.pontos_possiveis) +
       kpiBox('Não conformidades', v.nao_conformidades || 0, (v.nao_conformidades || 0) ? 'var(--red)' : 'var(--green)') +
       kpiBox('Críticos reprovados', v.criticos_nao_conformes || 0, (v.criticos_nao_conformes || 0) ? 'var(--red)' : 'var(--green)') +
       kpiBox('Correção', statusCorrecao(d.tarefa).txt) +
-    '</div>' + itens +
+    '</div>' + itens) +
     (v.consideracoes_finais ? '<h3 class="tit-secao">Considerações finais</h3><div class="item-card" style="white-space:pre-wrap">' + esc(v.consideracoes_finais) + '</div>' : '') + plano;
 }
 
@@ -1305,9 +1338,12 @@ function folhaPdf(d) {
   const comp = delta == null ? 'primeira avaliação do setor' : '<span style="color:' + (delta >= 0 ? '#15803D' : '#B42318') + ';font-weight:600">' + (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(1).replace('.', ',') + ' pts</span> vs ' + dataCurta(d.anterior.finalizada_em) + ' (' + d.anterior.aproveitamento + '%)';
   const kpi = (r, val, cor, sub) => '<div class="k"><div class="kn">' + r + '</div><div class="kv"' + (cor ? ' style="color:' + cor + '"' : '') + '>' + val + '</div>' + (sub ? '<div class="ks">' + sub + '</div>' : '') + '</div>';
   const nc = v.nao_conformidades || 0, cr = v.criticos_nao_conformes || 0;
+  const kpisHtml = semNota(v)
+    ? kpi('Apontamentos', nc, nc ? '#B42318' : '#15803D') + kpi('Temas com apontamento', apontamentosPorTema(d).filter((g) => g.lista.length).length + ' de ' + TEMAS_LIVRE.length) + kpi('Fotos', d.respostas.reduce((a, r) => a + fotosDe(r).length, 0))
+    : kpi('Aproveitamento', pct + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor, comp) + kpi('Pontos', v.pontos_realizados + ' / ' + v.pontos_possiveis) + kpi('Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D');
   const corpo = (v.localizacao_lat != null ? '<div class="info">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + '</div>' : '') +
-    '<div class="kpis">' + kpi('Aproveitamento', pct + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor, comp) + kpi('Pontos', v.pontos_realizados + ' / ' + v.pontos_possiveis) + kpi('Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D') + '</div>' +
-    itens + plano + (v.consideracoes_finais ? '<div class="lbl">Considerações finais</div><div class="caixa">' + esc(v.consideracoes_finais) + '</div>' : '') + '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div>';
+    '<div class="kpis">' + kpisHtml + '</div>' +
+    (semNota(v) ? livreHtmlPdf(d) : itens + plano) + (v.consideracoes_finais ? '<div class="lbl">Considerações finais</div><div class="caixa">' + esc(v.consideracoes_finais) + '</div>' : '') + '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div>';
   return '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica</div><h1>' + esc(nomeSetor(v.setor)) + '</h1></div></div><div class="d">' + (numeroDoc(v) ? '<span class="ndoc">Nº ' + numeroDoc(v) + '</span><br>' : '') + 'Loja ' + esc(v.unidade || '—') + '<br>Téc. veterinário: ' + esc(v.veterinario_nome) + '<br>Finalizada em ' + dataHora(v.finalizada_em) + '</div></div>' +
     '<div class="wrap">' + corpo + '</div>' + rodapePdf();
 }
@@ -1343,15 +1379,15 @@ async function baixarPdfCompleto() {
   if (!janela) { toast('Libere as janelas pop-up para baixar o PDF.', 'erro'); return; }
   janela.document.write('<p style="font-family:sans-serif;padding:24px">Montando o PDF completo…</p>');
   const dados = await Promise.all(vs.map((x) => (x.id === d0.v.id ? Promise.resolve(d0) : dadosVisita(x.id))));
-  const media = Math.round(vs.reduce((s, x) => s + Number(x.aproveitamento || 0), 0) / vs.length * 10) / 10;
+  const mediaN = mediaNota(vs), media = mediaN == null ? null : Math.round(mediaN * 10) / 10;
   const nc = vs.reduce((s, x) => s + (x.nao_conformidades || 0), 0), cr = vs.reduce((s, x) => s + (x.criticos_nao_conformes || 0), 0);
-  const b = banda(media);
+  const b = banda(media == null ? 100 : media);
   const kpi = (r, val, cor) => '<div class="k"><div class="kn">' + r + '</div><div class="kv"' + (cor ? ' style="color:' + cor + '"' : '') + '>' + val + '</div></div>';
   const vets = Array.from(new Set(vs.map((x) => x.veterinario_nome).filter(Boolean))).join(', ');
-  const linhas = vs.map((x, i) => { const bx = banda(Number(x.aproveitamento || 0)); return '<tr><td class="pn">' + (i + 1) + '</td><td><b>' + esc(nomeSetor(x.setor)) + '</b>' + (numeroDoc(x) ? '<div class="base">Nº ' + numeroDoc(x) + '</div>' : '') + '</td><td class="pc" style="color:' + bx.cor + ';font-weight:700">' + x.aproveitamento + '%</td><td class="pc" style="color:' + ((x.nao_conformidades || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.nao_conformidades || 0) + '</td><td class="pc" style="color:' + ((x.criticos_nao_conformes || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.criticos_nao_conformes || 0) + '</td><td>' + (x.setor === 'geral' ? 'Gerência' : 'Encarregado · ' + esc(nomeSetor(x.setor))) + '</td></tr>'; }).join('');
+  const linhas = vs.map((x, i) => { const bx = semNota(x) ? { cor: '#5B6280' } : banda(Number(x.aproveitamento)); return '<tr><td class="pn">' + (i + 1) + '</td><td><b>' + esc(nomeSetor(x.setor)) + '</b>' + (numeroDoc(x) ? '<div class="base">Nº ' + numeroDoc(x) + '</div>' : '') + '</td><td class="pc" style="color:' + bx.cor + ';font-weight:700">' + (semNota(x) ? 'Sem nota' : x.aproveitamento + '%') + '</td><td class="pc" style="color:' + ((x.nao_conformidades || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.nao_conformidades || 0) + '</td><td class="pc" style="color:' + ((x.criticos_nao_conformes || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.criticos_nao_conformes || 0) + '</td><td>' + (x.setor === 'geral' ? 'Gerência' : 'Encarregado · ' + esc(nomeSetor(x.setor))) + '</td></tr>'; }).join('');
   const v = d0.v;
   const resumo = '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica · resumo</div><h1>Loja ' + esc(v.unidade || '—') + '</h1></div></div><div class="d">' + new Date(v.finalizada_em).toLocaleDateString('pt-BR') + '<br>Téc. veterinário: ' + esc(vets || '—') + '<br>' + vs.length + ' setor(es) avaliado(s)</div></div>' +
-    '<div class="wrap"><div class="kpis">' + kpi('Média dos setores', media.toFixed(1).replace('.', ',').replace(',0', '') + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor) + kpi('Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D') + '</div>' +
+    '<div class="wrap"><div class="kpis">' + (media == null ? '' : kpi('Média dos setores', media.toFixed(1).replace('.', ',').replace(',0', '') + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor)) + kpi(media == null ? 'Apontamentos' : 'Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D') + '</div>' +
     '<div class="lbl">Setores <span class="q">· cada um numa folha, para entregar ao responsável</span></div><table class="plano"><thead><tr><th class="pn">#</th><th>Setor</th><th class="pc">Aproveitamento</th><th class="pc">NC</th><th class="pc">Críticos</th><th>Entregar para</th></tr></thead><tbody>' + linhas + '</tbody></table>' +
     '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div></div>' + rodapePdf();
   const folhas = [resumo].concat(dados.map(folhaPdf)).map((f, i) => '<section' + (i ? ' style="page-break-before:always;break-before:page"' : '') + '>' + f + '</section>').join('');
@@ -1441,9 +1477,9 @@ async function paginaVeterinarios() {
   estado.visitas.forEach((v) => { const k = v.veterinario_nome || '—'; (porVet[k] = porVet[k] || []).push(v); });
   const linhas = Object.entries(porVet).map(([nome, l]) => {
     const mes = l.filter((v) => new Date(v.finalizada_em) >= ini);
-    const media = l.reduce((a, v) => a + Number(v.aproveitamento || 0), 0) / l.length;
+    const media = mediaNota(l);
     const p = (pos || []).find((x) => sem(x.nome) === sem(nome) || x.matricula === l[0].veterinario_matricula);
-    return '<tr><td style="font-weight:700">' + esc(nome) + '</td><td>' + mes.length + '</td><td>' + l.length + '</td><td>' + [...new Set(mes.map((v) => v.unidade))].length + '</td><td>' + media.toFixed(1).replace('.', ',') + '%</td><td>' + dataHora(l[0].finalizada_em) + '</td><td>' + (p ? haQuanto(p.registrado_em) + (p.unidade ? ' · loja ' + esc(p.unidade) : '') + ' <a class="link-vt" onclick="estado.vetMapa=\'' + esc(p.matricula) + '\';irPara(\'mapa\')">ver no mapa</a>' : '—') + '</td></tr>';
+    return '<tr><td style="font-weight:700">' + esc(nome) + '</td><td>' + mes.length + '</td><td>' + l.length + '</td><td>' + [...new Set(mes.map((v) => v.unidade))].length + '</td><td>' + (media == null ? '—' : media.toFixed(1).replace('.', ',') + '%') + '</td><td>' + dataHora(l[0].finalizada_em) + '</td><td>' + (p ? haQuanto(p.registrado_em) + (p.unidade ? ' · loja ' + esc(p.unidade) : '') + ' <a class="link-vt" onclick="estado.vetMapa=\'' + esc(p.matricula) + '\';irPara(\'mapa\')">ver no mapa</a>' : '—') + '</td></tr>';
   }).join('');
   document.getElementById('conteudo-principal').innerHTML = cabecalho('Veterinários', 'Desempenho de cada técnico e onde foi visto por último') +
     '<div class="tabela-wrap"><table><thead><tr><th>Veterinário</th><th>Visitas no mês</th><th>Visitas no total</th><th>Lojas no mês</th><th>Nota média dada</th><th>Última visita</th><th>Última posição</th></tr></thead><tbody>' + (linhas || '<tr><td colspan="7" class="celula-vazio">Nenhuma visita ainda.</td></tr>') + '</tbody></table></div>';
@@ -1492,7 +1528,12 @@ async function iniciarDemo() {
         if (fim.getTime() > agora) continue;
         num++;
         const vis = { id: 'dv' + num, numero: num, setor, status: 'finalizada', unidade: u, veterinario_nome: v.n, veterinario_matricula: v.m, iniciada_em: iso(fim.getTime() - 50 * 60000), finalizada_em: iso(fim.getTime()), aproveitamento: pct, pontos_realizados: Math.round(pPos * pct / 100), pontos_possiveis: pPos, nao_conformidades: nc, criticos_nao_conformes: crit, localizacao_lat: loja[2] + (rnd() - 0.5) * 0.002, localizacao_lng: loja[3] + (rnd() - 0.5) * 0.002, localizacao_endereco: 'Supermercados BH · ' + loja[1], tarefa_id: null, consideracoes_finais: pct < 70 ? 'Reforçar treinamento da equipe e acompanhar as correções nos próximos 7 dias.' : null };
-        if (nc > 0) {
+        // Últimas 3 semanas: metade das visitas no modelo livre (apontamentos, sem nota).
+        if (dia <= 20 && setor !== 'geral' && rnd() < 0.5) {
+          vis.aproveitamento = null; vis.pontos_realizados = null; vis.pontos_possiveis = null; vis.criticos_nao_conformes = 0;
+          vis.nao_conformidades = Math.floor(rnd() * 5); vis.livre = true;
+        }
+        if (vis.nao_conformidades > 0) {
           tid++; vis.tarefa_id = 'dt' + tid;
           const idade = (agora - fim.getTime()) / (24 * hora);
           const st = idade > 20 ? 'aprovada' : idade > 8 ? (rnd() < 0.7 ? 'aprovada' : 'enviada') : idade > 3 ? escolhe(['enviada', 'pendente', 'devolvida']) : 'pendente';
@@ -1540,6 +1581,15 @@ async function iniciarDemo() {
   function respostasDe(vid) {
     const v = db.visitas_tecnicas.find((x) => x.id === vid); if (!v) return [];
     const ja = db.visita_tecnica_respostas.filter((r) => r.visita_id === vid); if (ja.length) return ja;
+    if (v.aproveitamento == null) {
+      const ex = { 'Limpeza': ['Ralo da sala de preparo com acúmulo de gordura.', 'Paredes da câmara com sujeira acumulada.', 'Grelhas do balcão refrigerado sujas.'], 'Organização': ['Caixas direto no chão da câmara.', 'Equipamento em desuso dentro da câmara.', 'Produtos de limpeza junto de alimentos.'], 'Validade / Tara': ['Bandejas sem etiqueta de validade no autosserviço.', 'Produto vencido encontrado na exposição.', 'Fracionado com tara errada.'], 'Planilhas e processos administrativos': ['Planilha de temperatura sem registro da noite.', 'Controle de higienização sem assinatura.'], 'Outros': ['Colaborador sem touca na área de manipulação.', 'Lixeira sem tampa com pedal.'] };
+      const temas = Object.keys(ex), out = [];
+      for (let i = 0; i < v.nao_conformidades; i++) { const t = escolhe(temas); out.push({ id: vid + '-a' + i, visita_id: vid, pergunta_id: null, pergunta_texto: t, critico: false, resposta: 'nao', justificativa: escolhe(ex[t]), fotos_urls: [], respondida_em: new Date(new Date(v.finalizada_em).getTime() - (v.nao_conformidades - i) * 60000).toISOString() }); }
+      db.visita_tecnica_respostas.push(...out);
+      const t = db.tarefas.find((x) => x.id === v.tarefa_id);
+      if (t && t.correcao_status !== 'pendente') out.forEach((r) => db.correcao_itens.push({ tarefa_id: t.id, resposta_id: r.id, pergunta_texto: r.pergunta_texto, critico: false, status: 'corrigido', aprovacao: t.correcao_status === 'aprovada' ? 'aprovado' : t.correcao_status === 'devolvida' ? 'devolvido' : null, aprovacao_obs: null, respondido_por: t.correcao_enviada_por, criado_em: v.finalizada_em }));
+      return out;
+    }
     const ps = perguntas.filter((p) => p.setor === v.setor);
     let nc = v.nao_conformidades, cr = v.criticos_nao_conformes;
     const obs = ['Registro de temperatura incompleto no turno da tarde.', 'Produto sem etiqueta de identificação.', 'Ralo sem tampa e com resíduos.', 'Uniforme incompleto (sem touca).', 'Planilha de higienização sem assinatura.', 'Validade vencida encontrada na exposição.', 'Termômetro marcando acima do limite.'];
