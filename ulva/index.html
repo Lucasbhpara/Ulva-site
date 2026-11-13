@@ -8230,6 +8230,13 @@ async function impAnalisarVendaDia(linhas, cab) {
     total += v;
   }
   if (!porEan.size) throw new Error('A planilha não tem nenhuma venda maior que zero.');
+  // Essa exportação ("VENDAS ATÉ") com um PERÍODO junta tudo numa linha por
+  // produto, com a data do primeiro dia em que ele vendeu — os valores ficam
+  // errados por dia. Só serve com UM dia.
+  if (datas.size > 1) {
+    const ds = [...datas].sort();
+    throw new Error('Esta planilha "VENDAS ATÉ" veio com ' + datas.size + ' dias (' + giroData(ds[0]) + ' a ' + giroData(ds[ds.length - 1]) + '). Nesse formato, o sistema soma o período inteiro em cada produto e a venda por dia sai errada. Exporte UM dia por vez, ou use o relatório do Falcon com os dias nas colunas. Nada foi importado.');
+  }
   const eans = new Set([...porEan.keys()].map((k) => k.split('|')[0]));
   const mapa = await impMapaCodigoInterno(eans);
   const registros = new Map();
