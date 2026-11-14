@@ -382,14 +382,19 @@ async function lerArquivo(f) {
     estado.lido = r;
     const existente = estado.vendedores.find((v) => v.codigo_sugestao === r.fornecedorCodigo);
     box.innerHTML = '<div class="resumo-forn"><div><small>Código da sugestão</small><b>' + esc(r.fornecedorCodigo) + '</b></div><div><small>Fornecedor</small><b>' + esc(r.fornecedorNome) + '</b></div><div><small>Atendimento · itens</small><b>' + esc(r.atendimento || '—') + ' · ' + r.produtos.length + '</b></div></div>' +
-      '<div class="duas"><label class="campo"><span>Nome do vendedor</span><input id="ms-nome" value="' + esc(existente ? existente.nome : '') + '"></label><label class="campo"><span>Telefone (WhatsApp)</span><input id="ms-tel" placeholder="(31) 99999-9999" value="' + esc(existente ? fone(existente.telefone) : '') + '"></label></div>' +
+      '<datalist id="nomes-vend">' + [...new Set(estado.vendedores.map((v) => v.nome))].map((n) => '<option value="' + esc(n) + '">').join('') + '</datalist>' +
+      '<div class="duas"><label class="campo"><span>Nome do vendedor</span><input id="ms-nome" list="nomes-vend" oninput="preencherFone(this.value)" value="' + esc(existente ? existente.nome : '') + '"></label><label class="campo"><span>Telefone (WhatsApp)</span><input id="ms-tel" placeholder="(31) 99999-9999" value="' + esc(existente ? fone(existente.telefone) : '') + '"></label></div>' +
       (existente ? '<div class="dica" style="margin:0 0 12px">Já existe um vendedor com o código ' + esc(r.fornecedorCodigo) + ' (' + esc(existente.nome) + '). Salvar vai <b>atualizar</b> a lista de itens dele.</div>' : '') +
       '<div class="lista-mini"><table><thead><tr><th>Código</th><th>Produto</th><th class="n">Cx c/</th><th class="n">Estoque cx</th><th class="n">Média sem. cx</th></tr></thead><tbody>' +
       r.produtos.map((p) => '<tr><td>' + p.codigo + '</td><td>' + esc(p.descricao) + '</td><td class="n">' + p.qtdCaixa + '</td><td class="n">' + n1(p.estoqueCx) + '</td><td class="n">' + n1(p.mdSemanalCx) + '</td></tr>').join('') + '</tbody></table></div>' +
-      '<div class="dica">O vendedor entra no app LEVEL com o <b>nome</b> e o código <b>' + esc(r.fornecedorCodigo) + '</b>. Estoque e venda são atualizados pelo ULVA todo dia; os números do PDF só servem de reserva.</div>';
+      '<div class="dica">O vendedor entra no app LEVEL com o <b>nome</b> e o código <b>' + esc(r.fornecedorCodigo) + '</b> (ou qualquer outro código dele). Se ele atende outras indústrias, cadastre cada PDF com o <b>mesmo nome</b>: no app ele vê todas juntas. Estoque e venda são atualizados pelo ULVA todo dia; os números do PDF só servem de reserva.</div>';
     document.getElementById('ms-salvar').disabled = false;
     document.getElementById('ms-nome').focus();
   } catch (e) { box.innerHTML = '<div class="login-erro" style="margin-top:14px">Erro ao ler o PDF: ' + esc(e.message) + '</div>'; }
+}
+function preencherFone(nome) {
+  const v = estado.vendedores.find((x) => sem(x.nome) === sem(nome) && x.telefone);
+  const t = document.getElementById('ms-tel'); if (v && !soDig(t.value)) t.value = fone(v.telefone);
 }
 function novaSugestao() {
   estado.lido = null; document.getElementById('ms-resultado').innerHTML = ''; document.getElementById('ms-salvar').disabled = true; document.getElementById('arquivo').value = '';
@@ -408,6 +413,7 @@ async function salvarSugestao() {
     if (existente) { const { error } = await sb.from('level_vendedores').update(dados).eq('id', existente.id); if (error) throw error; id = existente.id; }
     else { const { data, error } = await sb.from('level_vendedores').insert(dados).select('id').single(); if (error) throw error; id = data.id; }
     const del = await sb.from('level_vendedor_produtos').delete().eq('vendedor_id', id); if (del.error) throw del.error;
+    if (tel) await sb.from('level_vendedores').update({ telefone: tel }).ilike('nome', nome);
     const linhas = r.produtos.map((p) => ({ vendedor_id: id, codigo_interno: p.codigo, descricao: p.descricao, qtd_caixa: p.qtdCaixa, ean: p.ean, estoque_cx_erp: p.estoqueCx, md_semanal_cx_erp: p.mdSemanalCx }));
     const ins = await sb.from('level_vendedor_produtos').insert(linhas); if (ins.error) throw ins.error;
     fecharModal('modal-sugestao');
@@ -438,6 +444,7 @@ async function salvarVendedor() {
   if (!dados.nome || !dados.codigo_sugestao) { toast('Nome e código são obrigatórios', 'erro'); return; }
   const { error } = await sb.from('level_vendedores').update(dados).eq('id', estado.editando);
   if (error) { toast('Não salvou: ' + error.message, 'erro'); return; }
+  if (dados.telefone) await sb.from('level_vendedores').update({ telefone: dados.telefone }).ilike('nome', dados.nome);
   fecharModal('modal-vendedor'); toast('Vendedor atualizado'); await carregarTudo(); desenhar();
 }
 async function excluirVendedor() {
