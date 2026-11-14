@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LEVEL · Portal de vendedores e promotores</title>
+<link rel="icon" href="../assets/logo-level.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #F3F5F8; --navy: #0E1B2C; --navy-2: #16273D; --nav-text: #AEB8C6;
+    --card: #FFFFFF; --card-2: #F7F9FC; --border: #E1E6EE;
+    --accent: #2F7BFF; --accent-hover: #1F66E5; --accent-soft: #E8F0FF;
+    --text: #0E1B2C; --text-2: #4F5B6B; --muted: #7D8898;
+    --green: #1E8E5A; --green-bg: #E3F5EC; --orange: #A86200; --orange-bg: #FFF1DB; --red: #D23C33; --red-bg: #FDE8E6;
+    --shadow: 0 1px 2px rgba(14,27,44,.05), 0 6px 20px rgba(14,27,44,.05);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Inter, system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+  button { font: inherit; cursor: pointer; }
+  input, select { font: inherit; }
+  .btn { border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 600; background: var(--accent); color: #fff; }
+  .btn:hover { background: var(--accent-hover); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn.sec { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn.sec:hover { background: var(--card-2); }
+  .btn.peq { padding: 6px 10px; font-size: 12.5px; }
+  .btn.perigo { background: var(--red-bg); color: var(--red); }
+  .campo { display: block; margin-bottom: 12px; }
+  .campo span { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
+  .campo input, .campo select { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; outline: none; }
+  .campo input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  /* login */
+  #tela-login { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+  .login-lado { background: var(--navy); color: #fff; padding: 56px; display: flex; flex-direction: column; justify-content: space-between; }
+  .login-lado img { width: 64px; height: 64px; border-radius: 16px; }
+  .login-lado h1 { font-size: 40px; margin: 22px 0 8px; letter-spacing: 2px; }
+  .login-lado p { color: var(--nav-text); max-width: 420px; line-height: 1.6; }
+  .login-form { display: flex; align-items: center; justify-content: center; padding: 32px; }
+  .login-caixa { width: 100%; max-width: 380px; }
+  .login-caixa h2 { margin: 0 0 4px; font-size: 22px; }
+  .login-caixa .sub { color: var(--muted); margin: 0 0 22px; }
+  .login-erro { background: var(--red-bg); color: var(--red); padding: 10px 12px; border-radius: 10px; margin-bottom: 12px; font-size: 13px; }
+  @media (max-width: 820px) { #tela-login { grid-template-columns: 1fr; } .login-lado { padding: 32px; } .login-lado h1 { font-size: 30px; } }
+
+  /* shell */
+  #app { display: none; min-height: 100vh; }
+  #app.ativo { display: grid; grid-template-columns: 240px 1fr; }
+  .lateral { background: var(--navy); color: #fff; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; }
+  .marca { display: flex; align-items: center; gap: 10px; padding: 4px 8px 20px; }
+  .marca img { width: 36px; height: 36px; border-radius: 10px; }
+  .marca b { font-size: 18px; letter-spacing: 1.5px; display: block; }
+  .marca small { color: var(--nav-text); font-size: 11px; }
+  .nav { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: var(--nav-text); background: none; border: 0; text-align: left; font-weight: 500; }
+  .nav:hover { background: var(--navy-2); color: #fff; }
+  .nav.ativo { background: var(--accent); color: #fff; }
+  .nav .cont { margin-left: auto; background: var(--red); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; }
+  .usuario { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px 8px 0; border-top: 1px solid var(--navy-2); }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+  .usuario .nome { font-weight: 600; font-size: 13px; }
+  .usuario a { color: var(--nav-text); font-size: 12px; cursor: pointer; }
+  main { padding: 28px 32px; min-width: 0; }
+  .cabeca { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .cabeca h1 { margin: 0; font-size: 24px; }
+  .cabeca p { margin: 4px 0 0; color: var(--muted); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); }
+  .kpi small { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .kpi b { display: block; font-size: 26px; margin-top: 6px; }
+  .painel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; margin-bottom: 18px; }
+  .painel-topo { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .painel-topo h3 { margin: 0; font-size: 15px; }
+  .painel-topo .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); background: var(--card-2); padding: 9px 14px; font-weight: 600; }
+  td { padding: 10px 14px; border-top: 1px solid var(--border); vertical-align: middle; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.clic { cursor: pointer; } tr.clic:hover td { background: var(--card-2); }
+  .selo { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 99px; }
+  .selo.ok { background: var(--green-bg); color: var(--green); }
+  .selo.alerta { background: var(--red-bg); color: var(--red); }
+  .selo.aviso { background: var(--orange-bg); color: var(--orange); }
+  .selo.cinza { background: #EEF2F7; color: var(--text-2); }
+  .vazio { padding: 36px; text-align: center; color: var(--muted); }
+  .rolagem { overflow-x: auto; }
+  .busca { padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; min-width: 220px; }
+  .acoes { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  .whats { background: #E6F7EE; color: #128C4A; }
+  .whats:hover { background: #D3F0E0; }
+
+  /* modal */
+  .fundo { position: fixed; inset: 0; background: rgba(14,27,44,.45); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 50; }
+  .fundo.aberto { display: flex; }
+  .modal { background: #fff; border-radius: 18px; width: 100%; max-width: 760px; box-shadow: 0 20px 60px rgba(14,27,44,.3); }
+  .modal-topo { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-topo h3 { margin: 0; }
+  .modal-corpo { padding: 20px 22px; }
+  .modal-pe { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .x { background: none; border: 0; font-size: 22px; color: var(--muted); }
+  .soltar { border: 2px dashed #C9D3E1; border-radius: 14px; padding: 28px; text-align: center; color: var(--text-2); background: var(--card-2); cursor: pointer; }
+  .soltar.sobre { border-color: var(--accent); background: var(--accent-soft); }
+  .soltar b { color: var(--accent); }
+  .resumo-forn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+  .resumo-forn div { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .resumo-forn small { color: var(--muted); font-size: 11px; font-weight: 600; display: block; }
+  .duas { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .lista-mini { max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; }
+  .lista-mini td, .lista-mini th { padding: 7px 10px; font-size: 12.5px; }
+  .dica { background: var(--accent-soft); color: #1E4FA8; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5; margin-top: 12px; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 12px 18px; border-radius: 12px; z-index: 99; box-shadow: var(--shadow); }
+  .toast.erro { background: var(--red); }
+
+  @media (max-width: 900px) {
+    #app.ativo { grid-template-columns: 1fr; }
+    .lateral { position: static; height: auto; flex-direction: row; flex-wrap: wrap; }
+    .marca { padding-bottom: 6px; width: 100%; }
+    .usuario { margin: 0 0 0 auto; border: 0; padding: 0; }
+    main { padding: 20px 14px; }
+    .resumo-forn, .duas { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<section id="tela-login">
+  <div class="login-lado">
+    <div>
+      <img src="../assets/logo-level.png" alt="LEVEL">
+      <h1>LEVEL</h1>
+      <p>Portal da loja para vendedores e promotores. Cadastre a sugestão de cada indústria, acompanhe o estoque × venda e avise o vendedor quando a mercadoria não segura uma semana.</p>
+    </div>
+    <p style="font-size:12px">Família ULVA · ULTRA · LEVEL · VITA · AUDIT</p>
+  </div>
+  <div class="login-form">
+    <div class="login-caixa">
+      <h2>Entrar</h2>
+      <p class="sub">Use o mesmo nome e matrícula do ULVA.</p>
+      <div id="login-erro"></div>
+      <label class="campo"><span>Nome</span><input id="login-nome" autocomplete="username"></label>
+      <label class="campo"><span>Matrícula</span><input id="login-mat" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()"></label>
+      <button class="btn" id="btn-entrar" style="width:100%" onclick="entrar()">Entrar</button>
+    </div>
+  </div>
+</section>
+
+<section id="app">
+  <aside class="lateral">
+    <div class="marca"><img src="../assets/logo-level.png" alt=""><div><b>LEVEL</b><small>by ULVA</small></div></div>
+    <button class="nav" data-pag="alertas" onclick="irPara('alertas')">Alertas <span class="cont" id="cont-alertas" style="display:none"></span></button>
+    <button class="nav" data-pag="vendedores" onclick="irPara('vendedores')">Vendedores</button>
+    <button class="nav" data-pag="promotores" onclick="irPara('promotores')">Promotores</button>
+    <div class="usuario"><div class="avatar" id="u-avatar"></div><div><div class="nome" id="u-nome"></div><a onclick="sair()">Sair</a></div></div>
+  </aside>
+  <main id="conteudo"></main>
+</section>
+
+<!-- modal: cadastrar sugestão -->
+<div class="fundo" id="modal-sugestao">
+  <div class="modal">
+    <div class="modal-topo"><h3 id="ms-titulo">Cadastrar sugestão do vendedor</h3><button class="x" onclick="fecharModal('modal-sugestao')">×</button></div>
+    <div class="modal-corpo">
+      <div class="soltar" id="soltar" onclick="document.getElementById('arquivo').click()">
+        Arraste aqui o PDF <b>Relacionamento Fornecedor x Produto</b> do ERP<br><small>ou clique para escolher o arquivo</small>
+      </div>
+      <input type="file" id="arquivo" accept="application/pdf" style="display:none" onchange="lerArquivo(this.files[0])">
+      <div id="ms-resultado"></div>
+    </div>
+    <div class="modal-pe"><button class="btn sec" onclick="fecharModal('modal-sugestao')">Cancelar</button><button class="btn" id="ms-salvar" disabled onclick="salvarSugestao()">Salvar vendedor</button></div>
+  </div>
+</div>
+
+<!-- modal: editar vendedor -->
+<div class="fundo" id="modal-vendedor">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-topo"><h3>Editar vendedor</h3><button class="x" onclick="fecharModal('modal-vendedor')">×</button></div>
+    <div class="modal-corpo">
+      <label class="campo"><span>Nome do vendedor</span><input id="ev-nome"></label>
+      <label class="campo"><span>Telefone (WhatsApp)</span><input id="ev-tel" placeholder="(31) 99999-9999"></label>
+      <label class="campo"><span>Indústria / fornecedor</span><input id="ev-ind"></label>
+      <label class="campo"><span>Código da sugestão (login do vendedor)</span><input id="ev-cod"></label>
+      <label class="campo"><span>Situação</span><select id="ev-ativo"><option value="1">Ativo</option><option value="0">Inativo</option></select></label>
+    </div>
+    <div class="modal-pe"><button class="btn perigo" onclick="excluirVendedor()" style="margin-right:auto">Excluir</button><button class="btn sec" onclick="fecharModal('modal-vendedor')">Cancelar</button><button class="btn" onclick="salvarVendedor()">Salvar</button></div>
+  </div>
+</div>
+
+<!-- modal: promotor -->
+<div class="fundo" id="modal-promotor">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-topo"><h3 id="mp-titulo">Novo promotor</h3><button class="x" onclick="fecharModal('modal-promotor')">×</button></div>
+    <div class="modal-corpo">
+      <label class="campo"><span>Nome do promotor</span><input id="mp-nome"></label>
+      <label class="campo"><span>Empresa</span><input id="mp-emp"></label>
+      <div class="dica">O promotor entra no app LEVEL com o <b>nome</b> e a senha <b>0000</b>. No primeiro acesso ele cria a senha dele.</div>
+    </div>
+    <div class="modal-pe"><button class="btn sec" onclick="fecharModal('modal-promotor')">Cancelar</button><button class="btn" onclick="salvarPromotor()">Salvar</button></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://llstmcmgormolhbnszap.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Kk5u4REY7PUWKMpx9wlZnA_BXgfqrxF';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const estado = { usuario: null, pagina: 'alertas', vendedores: [], cobertura: [], promotores: [], lido: null, editando: null, promotorEditando: null, vendedorAberto: null, busca: '' };
+
+// ---------------------------------------------------------------- util
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sem = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+const n1 = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+const n0 = (v) => v == null ? '—' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+const soDig = (s) => String(s || '').replace(/\D/g, '');
+function fone(t) { const d = soDig(t); if (d.length === 11) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7); if (d.length === 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6); return t || '—'; }
+function iniciais(n) { return String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0].toUpperCase()).join(''); }
+function toast(msg, tipo) { const el = document.createElement('div'); el.className = 'toast ' + (tipo || ''); el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 4000); }
+function abrirModal(id) { document.getElementById(id).classList.add('aberto'); }
+function fecharModal(id) { document.getElementById(id).classList.remove('aberto'); }
+function dataBR(d) { if (!d) return '—'; const [a, m, dd] = String(d).slice(0, 10).split('-'); return dd + '/' + m + '/' + a; }
+
+// ---------------------------------------------------------------- login
+function podeEntrar(c) { return c.is_admin || /gerent|comerc|diretor|encarreg|supervis/.test(sem(c.funcao)); }
+async function entrar() {
+  const nome = document.getElementById('login-nome').value, mat = document.getElementById('login-mat').value.trim();
+  const box = document.getElementById('login-erro'); box.innerHTML = '';
+  if (!nome.trim() || !mat) { box.innerHTML = '<div class="login-erro">Preencha nome e matrícula.</div>'; return; }
+  const btn = document.getElementById('btn-entrar'); btn.disabled = true; btn.textContent = 'Entrando…';
+  try {
+    const { data, error } = await sb.from('colaboradores').select('*').eq('matricula', mat);
+    if (error) throw error;
+    const c = (data || []).find((x) => sem(x.nome) === sem(nome));
+    if (!c) { box.innerHTML = '<div class="login-erro">Nome ou matrícula incorretos.</div>'; return; }
+    if (!podeEntrar(c)) { box.innerHTML = '<div class="login-erro">Acesso só para gerência e comercial da loja.</div>'; return; }
+    try { localStorage.setItem('ulva:level:sessao', JSON.stringify({ matricula: c.matricula, nome: c.nome })); } catch (e) {}
+    abrirSessao(c);
+  } catch (e) { box.innerHTML = '<div class="login-erro">Não consegui entrar: ' + esc(e.message) + '</div>'; }
+  finally { btn.disabled = false; btn.textContent = 'Entrar'; }
+}
+function abrirSessao(c) {
+  estado.usuario = c;
+  document.getElementById('tela-login').style.display = 'none';
+  document.getElementById('app').classList.add('ativo');
+  document.getElementById('u-avatar').textContent = iniciais(c.nome);
+  document.getElementById('u-nome').textContent = c.nome;
+  irPara('alertas');
+}
+function sair() { try { localStorage.removeItem('ulva:level:sessao'); } catch (e) {} location.reload(); }
+async function restaurar() {
+  let s = null; try { s = JSON.parse(localStorage.getItem('ulva:level:sessao') || 'null'); } catch (e) {}
+  if (!s) return;
+  const { data } = await sb.from('colaboradores').select('*').eq('matricula', s.matricula);
+  const c = (data || []).find((x) => sem(x.nome) === sem(s.nome));
+  if (c && podeEntrar(c)) abrirSessao(c);
+}
+
+// ---------------------------------------------------------------- dados
+async function carregarTudo() {
+  const [v, c, p] = await Promise.all([
+    sb.from('level_vendedores').select('*').order('nome'),
+    sb.from('level_cobertura').select('*'),
+    sb.from('level_promotores').select('id,nome,empresa,senha_definida,ativo,criado_em').order('nome'),
+  ]);
+  if (v.error || c.error || p.error) toast('Erro ao carregar: ' + (v.error || c.error || p.error).message, 'erro');
+  estado.vendedores = v.data || []; estado.cobertura = c.data || []; estado.promotores = p.data || [];
+  const emAlerta = vendedoresEmAlerta().length;
+  const cont = document.getElementById('cont-alertas'); cont.textContent = emAlerta; cont.style.display = emAlerta ? '' : 'none';
+}
+function itensDo(vid) { return estado.cobertura.filter((x) => x.vendedor_id === vid); }
+function vendedoresEmAlerta() { return estado.vendedores.filter((v) => v.ativo && itensDo(v.id).some((i) => i.em_alerta)); }
+
+async function irPara(p) {
+  estado.pagina = p; estado.vendedorAberto = null;
+  document.querySelectorAll('.nav').forEach((b) => b.classList.toggle('ativo', b.dataset.pag === p));
+  document.getElementById('conteudo').innerHTML = '<div class="vazio">Carregando…</div>';
+  await carregarTudo();
+  desenhar();
+}
+function desenhar() {
+  const el = document.getElementById('conteudo');
+  if (estado.vendedorAberto) el.innerHTML = telaVendedor(estado.vendedorAberto);
+  else if (estado.pagina === 'alertas') el.innerHTML = telaAlertas();
+  else if (estado.pagina === 'vendedores') el.innerHTML = telaVendedores();
+  else el.innerHTML = telaPromotores();
+}
+
+// ---------------------------------------------------------------- telas
+function linkWhats(v, itens) {
+  const d = soDig(v.telefone); if (!d) return '';
+  const alerta = itens.filter((i) => i.em_alerta);
+  const msg = 'Olá, ' + v.nome.split(' ')[0] + '! Aqui é da loja 327 (Supermercados BH). ' + alerta.length + ' item(ns) da ' + (v.fornecedor_nome || v.industria || 'sua sugestão') + ' estão com estoque para menos de uma semana. Pode passar na loja para fazer o pedido? A sugestão já está no app LEVEL.';
+  return 'https://wa.me/55' + d + '?text=' + encodeURIComponent(msg);
+}
+function telaAlertas() {
+  const lista = vendedoresEmAlerta();
+  const totalItens = estado.cobertura.filter((i) => i.em_alerta && estado.vendedores.find((v) => v.id === i.vendedor_id && v.ativo)).length;
+  const cab = '<div class="cabeca"><div><h1>Alertas</h1><p>Vendedores com itens que não seguram uma semana de venda (estoque × venda média dos últimos 28 dias).</p></div><button class="btn" onclick="novaSugestao()">+ Cadastrar sugestão</button></div>' +
+    '<div class="cards"><div class="kpi"><small>Vendedores em alerta</small><b style="color:var(--red)">' + lista.length + '</b></div><div class="kpi"><small>Itens abaixo de 7 dias</small><b>' + totalItens + '</b></div><div class="kpi"><small>Vendedores cadastrados</small><b>' + estado.vendedores.filter((v) => v.ativo).length + '</b></div><div class="kpi"><small>Itens acompanhados</small><b>' + estado.cobertura.length + '</b></div></div>';
+  if (!estado.vendedores.length) return cab + '<div class="painel"><div class="vazio">Nenhum vendedor ainda. Clique em <b>Cadastrar sugestão</b> e envie o PDF do ERP.</div></div>';
+  if (!lista.length) return cab + '<div class="painel"><div class="vazio">Tudo certo: nenhum item abaixo de uma semana de cobertura.</div></div>';
+  return cab + '<div class="painel"><div class="rolagem"><table><thead><tr><th>Vendedor</th><th>Indústria</th><th class="n">Itens em alerta</th><th class="n">Pedido semanal (cx)</th><th class="n">Pedido mensal (cx)</th><th></th></tr></thead><tbody>' +
+    lista.map((v) => {
+      const it = itensDo(v.id); const al = it.filter((i) => i.em_alerta);
+      const sem_ = it.reduce((s, i) => s + (i.sugestao_semanal_cx || 0), 0), mes = it.reduce((s, i) => s + (i.sugestao_mensal_cx || 0), 0);
+      const w = linkWhats(v, it);
+      return '<tr class="clic" onclick="abrirVendedor(\'' + v.id + '\')"><td><b>' + esc(v.nome) + '</b><br><small style="color:var(--muted)">' + fone(v.telefone) + '</small></td><td>' + esc(v.fornecedor_nome || v.industria || '—') + '<br><small style="color:var(--muted)">Cód. ' + esc(v.codigo_sugestao) + ' · ' + esc(v.atendimento || '') + '</small></td><td class="n"><span class="selo alerta">' + al.length + ' de ' + it.length + '</span></td><td class="n">' + n0(sem_) + '</td><td class="n">' + n0(mes) + '</td><td><div class="acoes">' + (w ? '<a class="btn peq whats" target="_blank" href="' + w + '" onclick="event.stopPropagation()">WhatsApp</a>' : '') + '</div></td></tr>';
+    }).join('') + '</tbody></table></div></div>';
+}
+function telaVendedores() {
+  const q = sem(estado.busca);
+  const lista = estado.vendedores.filter((v) => !q || sem(v.nome + ' ' + v.fornecedor_nome + ' ' + v.industria + ' ' + v.codigo_sugestao).includes(q));
+  const cab = '<div class="cabeca"><div><h1>Vendedores</h1><p>Cada vendedor entra no app LEVEL com o nome dele e o código da sugestão.</p></div><button class="btn" onclick="novaSugestao()">+ Cadastrar sugestão</button></div>';
+  return cab + '<div class="painel"><div class="painel-topo"><div><h3>' + estado.vendedores.length + ' vendedor(es)</h3><div class="sub">Para atualizar os itens de um vendedor, envie o PDF novo com o mesmo código.</div></div><input class="busca" placeholder="Buscar vendedor, indústria ou código" value="' + esc(estado.busca) + '" oninput="estado.busca=this.value;desenharLista()"></div><div id="lista-vend">' + tabelaVendedores(lista) + '</div></div>';
+}
+function desenharLista() { const q = sem(estado.busca); document.getElementById('lista-vend').innerHTML = tabelaVendedores(estado.vendedores.filter((v) => !q || sem(v.nome + ' ' + v.fornecedor_nome + ' ' + v.industria + ' ' + v.codigo_sugestao).includes(q))); }
+function tabelaVendedores(lista) {
+  if (!lista.length) return '<div class="vazio">Nenhum vendedor encontrado.</div>';
+  return '<div class="rolagem"><table><thead><tr><th>Vendedor</th><th>Telefone</th><th>Indústria</th><th>Código</th><th class="n">Itens</th><th>Situação</th><th></th></tr></thead><tbody>' +
+    lista.map((v) => {
+      const it = itensDo(v.id), al = it.filter((i) => i.em_alerta).length;
+      const sit = !v.ativo ? '<span class="selo cinza">Inativo</span>' : al ? '<span class="selo alerta">' + al + ' em alerta</span>' : '<span class="selo ok">OK</span>';
+      return '<tr class="clic" onclick="abrirVendedor(\'' + v.id + '\')"><td><b>' + esc(v.nome) + '</b></td><td>' + fone(v.telefone) + '</td><td>' + esc(v.fornecedor_nome || v.industria || '—') + '</td><td>' + esc(v.codigo_sugestao) + '</td><td class="n">' + it.length + '</td><td>' + sit + '</td><td><div class="acoes"><button class="btn peq sec" onclick="event.stopPropagation();editarVendedor(\'' + v.id + '\')">Editar</button></div></td></tr>';
+    }).join('') + '</tbody></table></div>';
+}
+function abrirVendedor(id) { estado.vendedorAberto = id; desenhar(); window.scrollTo(0, 0); }
+function telaVendedor(id) {
+  const v = estado.vendedores.find((x) => x.id === id); if (!v) return '';
+  const it = itensDo(id).slice().sort((a, b) => (b.em_alerta - a.em_alerta) || ((a.dias_cobertura ?? 999) - (b.dias_cobertura ?? 999)));
+  const w = linkWhats(v, it);
+  const est = it.find((i) => i.estoque_em);
+  return '<div class="cabeca"><div><a style="color:var(--accent);cursor:pointer;font-weight:600" onclick="estado.vendedorAberto=null;desenhar()">← Voltar</a><h1 style="margin-top:8px">' + esc(v.nome) + '</h1><p>' + esc(v.fornecedor_nome || v.industria || '') + ' · código ' + esc(v.codigo_sugestao) + ' · ' + fone(v.telefone) + (v.atendimento ? ' · atendimento ' + esc(v.atendimento) : '') + '</p></div><div class="acoes">' + (w ? '<a class="btn whats" target="_blank" href="' + w + '">Chamar no WhatsApp</a>' : '') + '<button class="btn sec" onclick="editarVendedor(\'' + v.id + '\')">Editar</button></div></div>' +
+    '<div class="painel"><div class="painel-topo"><div><h3>Sugestão de pedido</h3><div class="sub">Estoque da loja em ' + dataBR(est && est.estoque_em) + ' · venda semanal = média dos últimos 28 dias. Pedido semanal leva a 1 semana de estoque; mensal leva a ~4,3 semanas.</div></div></div>' +
+    (it.length ? '<div class="rolagem"><table><thead><tr><th>Código</th><th>Produto</th><th class="n">Cx c/</th><th class="n">Estoque (cx)</th><th class="n">Venda/sem (cx)</th><th class="n">Cobertura</th><th class="n">Pedido semanal</th><th class="n">Pedido mensal</th></tr></thead><tbody>' +
+      it.map((i) => '<tr><td>' + esc(i.codigo_interno) + '</td><td>' + esc(i.produto) + '</td><td class="n">' + n0(i.qtd_caixa) + '</td><td class="n">' + n1(i.estoque_cx) + '</td><td class="n">' + n1(i.venda_semana_cx) + '</td><td class="n">' + (i.dias_cobertura == null ? '—' : '<span class="selo ' + (i.em_alerta ? 'alerta' : i.dias_cobertura < 14 ? 'aviso' : 'ok') + '">' + n0(i.dias_cobertura) + ' dias</span>') + '</td><td class="n"><b>' + (i.sugestao_semanal_cx || '—') + '</b></td><td class="n">' + (i.sugestao_mensal_cx || '—') + '</td></tr>').join('') +
+      '</tbody></table></div>' : '<div class="vazio">Sem itens. Envie o PDF de sugestão deste vendedor.</div>') + '</div>';
+}
+function telaPromotores() {
+  const cab = '<div class="cabeca"><div><h1>Promotores</h1><p>Promotores entram no app LEVEL para cadastrar validade e mapear o layout da loja.</p></div><button class="btn" onclick="novoPromotor()">+ Novo promotor</button></div>';
+  if (!estado.promotores.length) return cab + '<div class="painel"><div class="vazio">Nenhum promotor cadastrado.</div></div>';
+  return cab + '<div class="painel"><div class="rolagem"><table><thead><tr><th>Promotor</th><th>Empresa</th><th>Senha</th><th>Situação</th><th></th></tr></thead><tbody>' +
+    estado.promotores.map((p) => '<tr><td><b>' + esc(p.nome) + '</b></td><td>' + esc(p.empresa || '—') + '</td><td>' + (p.senha_definida ? '<span class="selo ok">Criada pelo promotor</span>' : '<span class="selo aviso">Inicial 0000</span>') + '</td><td>' + (p.ativo ? '<span class="selo ok">Ativo</span>' : '<span class="selo cinza">Inativo</span>') + '</td><td><div class="acoes"><button class="btn peq sec" onclick="editarPromotor(\'' + p.id + '\')">Editar</button><button class="btn peq sec" onclick="resetarSenha(\'' + p.id + '\')">Voltar senha p/ 0000</button><button class="btn peq sec" onclick="alternarPromotor(\'' + p.id + '\')">' + (p.ativo ? 'Desativar' : 'Ativar') + '</button></div></td></tr>').join('') +
+    '</tbody></table></div></div>';
+}
+
+// ---------------------------------------------------------------- leitura do PDF do ERP
+function montarLinhas(itens) {
+  const linhas = [];
+  itens.forEach((it) => {
+    const y = Math.round(it.transform[5]);
+    let l = linhas.find((x) => Math.abs(x.y - y) <= 2);
+    if (!l) { l = { y, partes: [] }; linhas.push(l); }
+    l.partes.push({ x: it.transform[4], s: it.str });
+  });
+  linhas.sort((a, b) => b.y - a.y);
+  return linhas.map((l) => l.partes.sort((a, b) => a.x - b.x).map((p) => p.s).join(' ').replace(/\s+/g, ' ').trim());
+}
+const numBR = (s) => Number(String(s).replace(/\./g, '').replace(',', '.'));
+function lerRelacionamento(linhas) {
+  const r = { fornecedorCodigo: null, fornecedorNome: null, atendimento: null, produtos: [] };
+  for (const l of linhas) {
+    let m = l.match(/^Fornecedor\s+(\d+)\s+(.+?)(?:\s+Atendimento\s+(\S+))?$/);
+    if (m && !r.fornecedorCodigo) { r.fornecedorCodigo = m[1]; r.fornecedorNome = m[2].trim(); if (m[3]) r.atendimento = m[3]; continue; }
+    m = l.match(/^(\d{2,8})\s+(.+?)\s+(\d{1,4})\s+(\d{8,14})\s+(-?[\d.]*\d,\d+)\s+(-?[\d.]*\d,\d+)/);
+    if (m && !r.produtos.some((p) => p.codigo === m[1])) r.produtos.push({ codigo: m[1], descricao: m[2].replace(/\s+-\s*(CX\s*)?C\/\s*\d+\s*$/i, '').trim(), qtdCaixa: Number(m[3]), ean: m[4], estoqueCx: numBR(m[5]), mdSemanalCx: numBR(m[6]) });
+  }
+  return r;
+}
+async function lerArquivo(f) {
+  if (!f) return;
+  const box = document.getElementById('ms-resultado');
+  box.innerHTML = '<div class="vazio">Lendo ' + esc(f.name) + '…</div>';
+  try {
+    const doc = await pdfjsLib.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
+    let linhas = [];
+    for (let p = 1; p <= doc.numPages; p++) { const pg = await doc.getPage(p); const tc = await pg.getTextContent(); linhas = linhas.concat(montarLinhas(tc.items)); }
+    const r = lerRelacionamento(linhas);
+    if (!r.fornecedorCodigo || !r.produtos.length) { box.innerHTML = '<div class="login-erro" style="margin-top:14px">Não reconheci este PDF. Use o relatório "Relacionamento Fornecedor x Produto" do ERP.</div>'; document.getElementById('ms-salvar').disabled = true; return; }
+    estado.lido = r;
+    const existente = estado.vendedores.find((v) => v.codigo_sugestao === r.fornecedorCodigo);
+    box.innerHTML = '<div class="resumo-forn"><div><small>Código da sugestão</small><b>' + esc(r.fornecedorCodigo) + '</b></div><div><small>Fornecedor</small><b>' + esc(r.fornecedorNome) + '</b></div><div><small>Atendimento · itens</small><b>' + esc(r.atendimento || '—') + ' · ' + r.produtos.length + '</b></div></div>' +
+      '<div class="duas"><label class="campo"><span>Nome do vendedor</span><input id="ms-nome" value="' + esc(existente ? existente.nome : '') + '"></label><label class="campo"><span>Telefone (WhatsApp)</span><input id="ms-tel" placeholder="(31) 99999-9999" value="' + esc(existente ? fone(existente.telefone) : '') + '"></label></div>' +
+      (existente ? '<div class="dica" style="margin:0 0 12px">Já existe um vendedor com o código ' + esc(r.fornecedorCodigo) + ' (' + esc(existente.nome) + '). Salvar vai <b>atualizar</b> a lista de itens dele.</div>' : '') +
+      '<div class="lista-mini"><table><thead><tr><th>Código</th><th>Produto</th><th class="n">Cx c/</th><th class="n">Estoque cx</th><th class="n">Média sem. cx</th></tr></thead><tbody>' +
+      r.produtos.map((p) => '<tr><td>' + p.codigo + '</td><td>' + esc(p.descricao) + '</td><td class="n">' + p.qtdCaixa + '</td><td class="n">' + n1(p.estoqueCx) + '</td><td class="n">' + n1(p.mdSemanalCx) + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<div class="dica">O vendedor entra no app LEVEL com o <b>nome</b> e o código <b>' + esc(r.fornecedorCodigo) + '</b>. Estoque e venda são atualizados pelo ULVA todo dia; os números do PDF só servem de reserva.</div>';
+    document.getElementById('ms-salvar').disabled = false;
+    document.getElementById('ms-nome').focus();
+  } catch (e) { box.innerHTML = '<div class="login-erro" style="margin-top:14px">Erro ao ler o PDF: ' + esc(e.message) + '</div>'; }
+}
+function novaSugestao() {
+  estado.lido = null; document.getElementById('ms-resultado').innerHTML = ''; document.getElementById('ms-salvar').disabled = true; document.getElementById('arquivo').value = '';
+  abrirModal('modal-sugestao');
+}
+async function salvarSugestao() {
+  const r = estado.lido; if (!r) return;
+  const nome = document.getElementById('ms-nome').value.trim(), tel = soDig(document.getElementById('ms-tel').value);
+  if (!nome) { toast('Digite o nome do vendedor', 'erro'); return; }
+  if (tel && tel.length < 10) { toast('Telefone com DDD, por favor', 'erro'); return; }
+  const btn = document.getElementById('ms-salvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    const existente = estado.vendedores.find((v) => v.codigo_sugestao === r.fornecedorCodigo);
+    const dados = { nome, telefone: tel || null, industria: r.fornecedorNome, fornecedor_nome: r.fornecedorNome, atendimento: r.atendimento, codigo_sugestao: r.fornecedorCodigo, ativo: true, atualizado_em: new Date().toISOString() };
+    let id;
+    if (existente) { const { error } = await sb.from('level_vendedores').update(dados).eq('id', existente.id); if (error) throw error; id = existente.id; }
+    else { const { data, error } = await sb.from('level_vendedores').insert(dados).select('id').single(); if (error) throw error; id = data.id; }
+    const del = await sb.from('level_vendedor_produtos').delete().eq('vendedor_id', id); if (del.error) throw del.error;
+    const linhas = r.produtos.map((p) => ({ vendedor_id: id, codigo_interno: p.codigo, descricao: p.descricao, qtd_caixa: p.qtdCaixa, ean: p.ean, estoque_cx_erp: p.estoqueCx, md_semanal_cx_erp: p.mdSemanalCx }));
+    const ins = await sb.from('level_vendedor_produtos').insert(linhas); if (ins.error) throw ins.error;
+    fecharModal('modal-sugestao');
+    toast(nome + ' salvo com ' + linhas.length + ' itens');
+    await carregarTudo(); estado.vendedorAberto = id; desenhar();
+  } catch (e) { toast('Não salvou: ' + e.message, 'erro'); }
+  finally { btn.disabled = false; btn.textContent = 'Salvar vendedor'; }
+}
+// arrastar e soltar
+(function () {
+  const z = document.getElementById('soltar');
+  ['dragenter', 'dragover'].forEach((ev) => z.addEventListener(ev, (e) => { e.preventDefault(); z.classList.add('sobre'); }));
+  ['dragleave', 'drop'].forEach((ev) => z.addEventListener(ev, (e) => { e.preventDefault(); z.classList.remove('sobre'); }));
+  z.addEventListener('drop', (e) => lerArquivo(e.dataTransfer.files[0]));
+})();
+
+// ---------------------------------------------------------------- vendedor: editar/excluir
+function editarVendedor(id) {
+  const v = estado.vendedores.find((x) => x.id === id); if (!v) return; estado.editando = id;
+  document.getElementById('ev-nome').value = v.nome; document.getElementById('ev-tel').value = fone(v.telefone) === '—' ? '' : fone(v.telefone);
+  document.getElementById('ev-ind').value = v.fornecedor_nome || v.industria || ''; document.getElementById('ev-cod').value = v.codigo_sugestao;
+  document.getElementById('ev-ativo').value = v.ativo ? '1' : '0';
+  abrirModal('modal-vendedor');
+}
+async function salvarVendedor() {
+  const ind = document.getElementById('ev-ind').value.trim();
+  const dados = { nome: document.getElementById('ev-nome').value.trim(), telefone: soDig(document.getElementById('ev-tel').value) || null, industria: ind, fornecedor_nome: ind, codigo_sugestao: document.getElementById('ev-cod').value.trim(), ativo: document.getElementById('ev-ativo').value === '1', atualizado_em: new Date().toISOString() };
+  if (!dados.nome || !dados.codigo_sugestao) { toast('Nome e código são obrigatórios', 'erro'); return; }
+  const { error } = await sb.from('level_vendedores').update(dados).eq('id', estado.editando);
+  if (error) { toast('Não salvou: ' + error.message, 'erro'); return; }
+  fecharModal('modal-vendedor'); toast('Vendedor atualizado'); await carregarTudo(); desenhar();
+}
+async function excluirVendedor() {
+  const v = estado.vendedores.find((x) => x.id === estado.editando);
+  if (!v || !confirm('Excluir ' + v.nome + ' e a lista de itens dele?')) return;
+  await sb.from('level_vendedor_produtos').delete().eq('vendedor_id', v.id);
+  await sb.from('level_alertas').delete().eq('vendedor_id', v.id);
+  await sb.from('level_push_tokens').delete().eq('vendedor_id', v.id);
+  const { error } = await sb.from('level_vendedores').delete().eq('id', v.id);
+  if (error) { toast('Não excluiu: ' + error.message, 'erro'); return; }
+  fecharModal('modal-vendedor'); toast('Vendedor excluído'); estado.vendedorAberto = null; await carregarTudo(); desenhar();
+}
+
+// ---------------------------------------------------------------- promotores
+function novoPromotor() { estado.promotorEditando = null; document.getElementById('mp-titulo').textContent = 'Novo promotor'; document.getElementById('mp-nome').value = ''; document.getElementById('mp-emp').value = ''; abrirModal('modal-promotor'); setTimeout(() => document.getElementById('mp-nome').focus(), 50); }
+function editarPromotor(id) { const p = estado.promotores.find((x) => x.id === id); estado.promotorEditando = id; document.getElementById('mp-titulo').textContent = 'Editar promotor'; document.getElementById('mp-nome').value = p.nome; document.getElementById('mp-emp').value = p.empresa || ''; abrirModal('modal-promotor'); }
+async function salvarPromotor() {
+  const nome = document.getElementById('mp-nome').value.trim().replace(/\s+/g, ' '), empresa = document.getElementById('mp-emp').value.trim();
+  if (!nome || !empresa) { toast('Preencha nome e empresa', 'erro'); return; }
+  const outro = estado.promotores.find((p) => sem(p.nome) === sem(nome) && p.id !== estado.promotorEditando);
+  if (outro) { toast('Já existe um promotor com esse nome. Use o sobrenome para diferenciar.', 'erro'); return; }
+  const q = estado.promotorEditando ? sb.from('level_promotores').update({ nome, empresa }).eq('id', estado.promotorEditando) : sb.from('level_promotores').insert({ nome, empresa, senha: '0000', senha_definida: false, ativo: true });
+  const { error } = await q;
+  if (error) { toast('Não salvou: ' + error.message, 'erro'); return; }
+  fecharModal('modal-promotor'); toast(estado.promotorEditando ? 'Promotor atualizado' : nome + ' cadastrado · senha 0000'); await carregarTudo(); desenhar();
+}
+async function resetarSenha(id) {
+  const p = estado.promotores.find((x) => x.id === id); if (!confirm('Voltar a senha de ' + p.nome + ' para 0000?')) return;
+  const { error } = await sb.from('level_promotores').update({ senha: '0000', senha_definida: false }).eq('id', id);
+  if (error) { toast(error.message, 'erro'); return; } toast('Senha voltou para 0000'); await carregarTudo(); desenhar();
+}
+async function alternarPromotor(id) {
+  const p = estado.promotores.find((x) => x.id === id);
+  const { error } = await sb.from('level_promotores').update({ ativo: !p.ativo }).eq('id', id);
+  if (error) { toast(error.message, 'erro'); return; } await carregarTudo(); desenhar();
+}
+
+document.querySelectorAll('.fundo').forEach((f) => f.addEventListener('click', (e) => { if (e.target === f) f.classList.remove('aberto'); }));
+restaurar();
+</script>
+</body>
+</html>
