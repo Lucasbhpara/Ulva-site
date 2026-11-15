@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>VITA · Lojas</title>
+<link rel="icon" href="/vita/favicon.ico">
+<style>
+  :root {
+    --creme: #FBF8F1; --cartao: #FFFFFF; --borda: #E7E1D3; --texto: #1F2A37; --suave: #6B7280;
+    --verde: #7FB59A; --verde-esc: #4E8B6E; --verde-claro: #E6F2EB; --navy: #0E1B2C;
+    --vermelho: #C0473F; --ambar: #A86200;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; background: var(--creme); color: var(--texto); }
+  header { background: var(--cartao); border-bottom: 1px solid var(--borda); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  header h1 { margin: 0; font-size: 20px; color: var(--navy); }
+  header h1 span { color: var(--verde-esc); }
+  header p { margin: 2px 0 0; font-size: 13px; color: var(--suave); }
+  main { max-width: 980px; margin: 0 auto; padding: 20px; }
+  .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  h2 { margin: 0 0 12px; font-size: 16px; color: var(--navy); }
+  label { display: block; font-size: 12px; color: var(--suave); margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .4px; }
+  input, select { width: 100%; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 8px; font-size: 15px; background: #fff; color: var(--texto); }
+  input:focus, select:focus { outline: 2px solid var(--verde); border-color: var(--verde); }
+  button { border: 0; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn { background: var(--verde); color: #fff; }
+  .btn:hover { background: var(--verde-esc); }
+  .btn2 { background: var(--verde-claro); color: var(--verde-esc); }
+  .btn2:hover { background: #d4e9dc; }
+  .btn-link { background: none; color: var(--suave); padding: 6px 8px; font-weight: 500; }
+  .linha { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .linha { grid-template-columns: 1fr; } }
+  .acoes { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  .check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; }
+  .check input { width: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: .4px; padding: 8px; border-bottom: 1px solid var(--borda); }
+  td { padding: 10px 8px; border-bottom: 1px solid #F1ECE1; vertical-align: middle; }
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .tag.on { background: var(--verde-claro); color: var(--verde-esc); }
+  .tag.off { background: #F6E3E1; color: var(--vermelho); }
+  .msg { padding: 10px 12px; border-radius: 8px; font-size: 14px; margin-top: 12px; display: none; }
+  .msg.ok { background: var(--verde-claro); color: var(--verde-esc); display: block; }
+  .msg.erro { background: #F6E3E1; color: var(--vermelho); display: block; }
+  .acesso { background: var(--verde-claro); border-radius: 10px; padding: 14px; margin-top: 14px; display: none; }
+  .acesso b { font-size: 16px; }
+  .acesso pre { white-space: pre-wrap; font-family: inherit; margin: 8px 0 0; font-size: 14px; }
+  .busca { margin-bottom: 10px; }
+  .sub { font-size: 12px; color: var(--suave); }
+  .login { max-width: 380px; margin: 60px auto; }
+  .escondido { display: none !important; }
+  footer { text-align: center; font-size: 12px; color: var(--suave); padding: 24px 0 32px; }
+  .tabela-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>VITA <span>· Lojas</span></h1>
+    <p>Cadastro e liberação das lojas no app de validade</p>
+  </div>
+  <button class="btn-link escondido" id="btnSair" onclick="sair()">Sair</button>
+</header>
+
+<main>
+  <!-- LOGIN -->
+  <div class="cartao login" id="telaLogin">
+    <h2>Entrar como administrador</h2>
+    <label for="senhaAdmin">Senha do administrador</label>
+    <input type="password" id="senhaAdmin" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()">
+    <div class="acoes"><button class="btn" onclick="entrar()">Entrar</button></div>
+    <div class="msg" id="msgLogin"></div>
+  </div>
+
+  <!-- PAINEL -->
+  <div id="telaPainel" class="escondido">
+    <div class="cartao">
+      <h2 id="tituloForm">Nova loja</h2>
+      <div class="linha">
+        <div>
+          <label for="fNumero">Número</label>
+          <input type="number" id="fNumero" min="1" placeholder="Ex: 215">
+        </div>
+        <div>
+          <label for="fNome">Nome da loja</label>
+          <input type="text" id="fNome" placeholder="Ex: Itaúna Centro">
+        </div>
+        <div>
+          <label for="fRegional">Regional</label>
+          <select id="fRegional"><option value="">(sem regional)</option></select>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="fAtivo" checked> Loja liberada para usar o VITA</label>
+      <div class="acoes">
+        <button class="btn" onclick="salvar()">Salvar loja</button>
+        <button class="btn-link" onclick="limpar()">Limpar</button>
+      </div>
+      <div class="msg" id="msgForm"></div>
+      <div class="acesso" id="caixaAcesso">
+        <b>Acesso da loja no VITA</b>
+        <pre id="textoAcesso"></pre>
+        <div class="acoes">
+          <button class="btn2" onclick="copiarAcesso()">Copiar</button>
+          <button class="btn2" onclick="enviarWhats()">Enviar no WhatsApp</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h2>Lojas cadastradas</h2>
+      <input class="busca" type="search" id="busca" placeholder="Buscar por número ou nome" oninput="desenhar()">
+      <div class="tabela-wrap">
+        <table>
+          <thead><tr><th>Nº</th><th>Loja</th><th>Regional</th><th>Situação</th><th>Validades</th><th></th></tr></thead>
+          <tbody id="corpoTabela"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h2>Trocar a senha do administrador</h2>
+      <div class="linha" style="grid-template-columns: 1fr 1fr;">
+        <div><label for="novaSenha">Nova senha</label><input type="password" id="novaSenha" autocomplete="new-password"></div>
+        <div><label for="novaSenha2">Repita a nova senha</label><input type="password" id="novaSenha2" autocomplete="new-password"></div>
+      </div>
+      <div class="acoes"><button class="btn2" onclick="trocarSenha()">Trocar senha</button></div>
+      <div class="msg" id="msgSenha"></div>
+    </div>
+  </div>
+</main>
+
+<footer>VITA by ULVA · by Lucas Alberto</footer>
+
+<script>
+  const SUPA = 'https://llstmcmgormolhbnszap.supabase.co';
+  const KEY = 'sb_publishable_Kk5u4REY7PUWKMpx9wlZnA_BXgfqrxF';
+  let senha = null;
+  let dados = { regionais: [], lojas: [] };
+
+  try { senha = sessionStorage.getItem('vita_admin') || null; } catch (e) {}
+
+  async function rpc(nome, corpo) {
+    const r = await fetch(`${SUPA}/rest/v1/rpc/${nome}`, {
+      method: 'POST',
+      headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    });
+    const txt = await r.text();
+    let j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
+    if (!r.ok) throw new Error((j && (j.message || j.hint)) || `Erro ${r.status}`);
+    return j;
+  }
+
+  function mostrar(id, texto, tipo) {
+    const el = document.getElementById(id);
+    el.textContent = texto; el.className = 'msg ' + (tipo || '');
+  }
+
+  function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  async function entrar() {
+    const s = document.getElementById('senhaAdmin').value;
+    if (!s) return mostrar('msgLogin', 'Digite a senha.', 'erro');
+    try {
+      const ok = await rpc('vita_admin_entrar', { p_senha: s });
+      if (!ok) return mostrar('msgLogin', 'Senha incorreta.', 'erro');
+      senha = s;
+      try { sessionStorage.setItem('vita_admin', s); } catch (e) {}
+      abrirPainel();
+    } catch (e) { mostrar('msgLogin', 'Não consegui conectar: ' + e.message, 'erro'); }
+  }
+
+  function sair() {
+    senha = null;
+    try { sessionStorage.removeItem('vita_admin'); } catch (e) {}
+    document.getElementById('telaPainel').classList.add('escondido');
+    document.getElementById('btnSair').classList.add('escondido');
+    document.getElementById('telaLogin').classList.remove('escondido');
+    document.getElementById('senhaAdmin').value = '';
+  }
+
+  async function abrirPainel() {
+    document.getElementById('telaLogin').classList.add('escondido');
+    document.getElementById('telaPainel').classList.remove('escondido');
+    document.getElementById('btnSair').classList.remove('escondido');
+    await carregar();
+  }
+
+  async function carregar() {
+    try {
+      dados = await rpc('vita_admin_listar', { p_senha: senha });
+      const sel = document.getElementById('fRegional');
+      sel.innerHTML = '<option value="">(sem regional)</option>' +
+        dados.regionais.map(r => `<option value="${esc(r.id)}">${esc(r.nome)}</option>`).join('');
+      desenhar();
+    } catch (e) {
+      if (/senha/i.test(e.message)) { sair(); mostrar('msgLogin', 'Entre de novo.', 'erro'); }
+      else mostrar('msgForm', 'Não consegui carregar as lojas: ' + e.message, 'erro');
+    }
+  }
+
+  function nomeRegional(id) {
+    const r = dados.regionais.find(x => x.id === id);
+    return r ? r.nome : '-';
+  }
+
+  function desenhar() {
+    const q = document.getElementById('busca').value.trim().toLowerCase();
+    const lista = dados.lojas.filter(l => !q || String(l.numero).includes(q) || (l.nome || '').toLowerCase().includes(q));
+    document.getElementById('corpoTabela').innerHTML = lista.map(l => `
+      <tr>
+        <td><b>${esc(l.numero)}</b></td>
+        <td>${esc(l.nome)}${l.ultimo_cadastro ? `<div class="sub">último cadastro: ${new Date(l.ultimo_cadastro).toLocaleDateString('pt-BR')}</div>` : ''}</td>
+        <td>${esc(nomeRegional(l.regional_id))}</td>
+        <td><span class="tag ${l.ativo ? 'on' : 'off'}">${l.ativo ? 'Liberada' : 'Bloqueada'}</span></td>
+        <td>${esc(l.itens)}</td>
+        <td><button class="btn2" onclick="editar(${Number(l.numero)})">Editar</button></td>
+      </tr>`).join('') || '<tr><td colspan="6" class="sub">Nenhuma loja encontrada.</td></tr>';
+  }
+
+  function editar(numero) {
+    const l = dados.lojas.find(x => x.numero === numero);
+    if (!l) return;
+    document.getElementById('tituloForm').textContent = `Editar loja ${l.numero}`;
+    document.getElementById('fNumero').value = l.numero;
+    document.getElementById('fNumero').disabled = true;
+    document.getElementById('fNome').value = l.nome || '';
+    document.getElementById('fRegional').value = l.regional_id || '';
+    document.getElementById('fAtivo').checked = !!l.ativo;
+    mostrarAcesso(l.numero, l.nome);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function limpar() {
+    document.getElementById('tituloForm').textContent = 'Nova loja';
+    document.getElementById('fNumero').value = '';
+    document.getElementById('fNumero').disabled = false;
+    document.getElementById('fNome').value = '';
+    document.getElementById('fRegional').value = '';
+    document.getElementById('fAtivo').checked = true;
+    document.getElementById('caixaAcesso').style.display = 'none';
+    mostrar('msgForm', '', '');
+  }
+
+  function textoAcesso(numero, nome) {
+    return `Olá! A loja ${nome} (${numero}) já está liberada no VITA, o app de controle de validade da família ULVA.\n\n` +
+      `Para entrar:\n• Número da loja: ${numero}\n• Senha: bhlj${numero}@\n\n` +
+      `Pelo navegador: https://ulva.com.br/vita`;
+  }
+
+  function mostrarAcesso(numero, nome) {
+    document.getElementById('textoAcesso').textContent = textoAcesso(numero, nome);
+    document.getElementById('caixaAcesso').style.display = 'block';
+  }
+
+  async function salvar() {
+    const numero = parseInt(document.getElementById('fNumero').value, 10);
+    const nome = document.getElementById('fNome').value.trim();
+    const regional = document.getElementById('fRegional').value || null;
+    const ativo = document.getElementById('fAtivo').checked;
+    if (!numero || numero <= 0) return mostrar('msgForm', 'Digite o número da loja.', 'erro');
+    if (!nome) return mostrar('msgForm', 'Digite o nome da loja.', 'erro');
+    const nova = !document.getElementById('fNumero').disabled;
+    if (nova && dados.lojas.some(l => l.numero === numero)) {
+      return mostrar('msgForm', `A loja ${numero} já existe. Use o botão Editar na lista.`, 'erro');
+    }
+    try {
+      await rpc('vita_admin_salvar_loja', { p_senha: senha, p_numero: numero, p_nome: nome, p_regional_id: regional, p_ativo: ativo });
+      mostrar('msgForm', nova ? `Loja ${numero} cadastrada.` : `Loja ${numero} atualizada.`, 'ok');
+      await carregar();
+      mostrarAcesso(numero, nome);
+      document.getElementById('fNumero').disabled = true;
+      document.getElementById('tituloForm').textContent = `Editar loja ${numero}`;
+    } catch (e) { mostrar('msgForm', 'Não consegui salvar: ' + e.message, 'erro'); }
+  }
+
+  async function copiarAcesso() {
+    const t = document.getElementById('textoAcesso').textContent;
+    try { await navigator.clipboard.writeText(t); mostrar('msgForm', 'Texto copiado.', 'ok'); }
+    catch (e) { mostrar('msgForm', 'Não consegui copiar. Selecione o texto e copie.', 'erro'); }
+  }
+
+  function enviarWhats() {
+    const t = document.getElementById('textoAcesso').textContent;
+    window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank');
+  }
+
+  async function trocarSenha() {
+    const a = document.getElementById('novaSenha').value, b = document.getElementById('novaSenha2').value;
+    if (a.length < 8) return mostrar('msgSenha', 'A nova senha precisa ter pelo menos 8 caracteres.', 'erro');
+    if (a !== b) return mostrar('msgSenha', 'As duas senhas não são iguais.', 'erro');
+    try {
+      await rpc('vita_admin_trocar_senha', { p_senha: senha, p_nova: a });
+      senha = a;
+      try { sessionStorage.setItem('vita_admin', a); } catch (e) {}
+      document.getElementById('novaSenha').value = ''; document.getElementById('novaSenha2').value = '';
+      mostrar('msgSenha', 'Senha trocada. Use a nova senha na próxima vez.', 'ok');
+    } catch (e) { mostrar('msgSenha', 'Não consegui trocar: ' + e.message, 'erro'); }
+  }
+
+  if (senha) {
+    rpc('vita_admin_entrar', { p_senha: senha }).then(ok => ok ? abrirPainel() : sair()).catch(() => {});
+  }
+</script>
+</body>
+</html>
