@@ -8397,6 +8397,19 @@ async function impMostrarSituacao() {
   }
 }
 
+function impCorrigirDimensao(folha) {
+  if (!folha) return;
+  let maxR = 0, maxC = 0, achou = false;
+  Object.keys(folha).forEach((k) => {
+    if (k[0] === '!') return;
+    const c = XLSX.utils.decode_cell(k);
+    if (c.r > maxR) maxR = c.r;
+    if (c.c > maxC) maxC = c.c;
+    achou = true;
+  });
+  if (achou) folha['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: maxR, c: maxC } });
+}
+
 function impLerArquivo(input) {
   const arquivo = input.files && input.files[0];
   const previa = document.getElementById('imp-previa');
@@ -8407,6 +8420,9 @@ function impLerArquivo(input) {
     try {
       const livro = XLSX.read(new Uint8Array(ev.target.result), { type: 'array', cellDates: true });
       const folha = livro.Sheets[livro.SheetNames[0]];
+      // Algumas exportações vêm com a "dimensão" da planilha errada (diz que só tem a célula A1),
+      // e aí só o primeiro título era lido ("falta de cabeçalho"). Recalcula a área pelas células reais.
+      impCorrigirDimensao(folha);
       const linhas = XLSX.utils.sheet_to_json(folha, { header: 1, raw: true, defval: null });
       const cabVD = impAcharCabecalhoVendaDia(linhas);
       if (cabVD) previa.innerHTML = '<div class="carregando">Trocando os códigos de barras pelos códigos internos…</div>';
