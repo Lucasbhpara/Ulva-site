@@ -50,7 +50,9 @@
   .tool-item.active.alc .status { color: var(--accent-wolf); }
   @media (max-width: 760px) {
     .hero-title { font-size: 34px !important; }
-    .portal-row { flex-direction: column !important; }
+    .portal-row { flex-direction: column !important; gap: 20px !important; }
+    .ulva-logo-circle { width: 150px !important; height: 150px !important; }
+    .ulva-logo-circle img { width: 104px !important; height: 104px !important; }
     .nav-links { display: none !important; }
     .about-row { flex-direction: column !important; }
     .valores-grid { grid-template-columns: 1fr !important; }
@@ -79,7 +81,7 @@
     </nav>
     <a href="#portais" class="btn-primary" style="display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 700;">
       <img src="assets/logo-ulva.svg" alt="" style="width: 16px; height: 16px; border-radius: 50%; object-fit: cover;">
-      Acessar
+      Conhecer os apps
     </a>
   </header>
 
@@ -96,11 +98,11 @@
     </svg>
     <div style="position: relative; z-index: 1; max-width: 820px; margin: 0 auto;">
     <div class="familia-strip" style="margin-bottom: 28px;">
-      <a href="/ulva/"><span class="b"><img src="assets/logo-ulva.svg" alt="" style="width:28px;height:28px;border-radius:50%;"></span>ULVA</a>
-      <a href="/ultra/"><span class="b"><img src="assets/logo-ultra.png" alt=""></span>ULTRA</a>
-      <a href="/level/"><span class="b"><img src="assets/logo-level.png" alt=""></span>LEVEL</a>
-      <a href="/vita/"><span class="b"><img src="assets/logo-vita.png" alt=""></span>VITA</a>
-      <a href="/audit/"><span class="b"><img src="assets/logo-audit.png" alt=""></span>AUDIT</a>
+      <a href="#portais" data-app="ulva"><span class="b"><img src="assets/logo-ulva.svg" alt="" style="width:28px;height:28px;border-radius:50%;"></span>ULVA</a>
+      <a href="#portais" data-app="ultra"><span class="b"><img src="assets/logo-ultra.png" alt=""></span>ULTRA</a>
+      <a href="#portais" data-app="level"><span class="b"><img src="assets/logo-level.png" alt=""></span>LEVEL</a>
+      <a href="#portais" data-app="vita"><span class="b"><img src="assets/logo-vita.png" alt=""></span>VITA</a>
+      <a href="#portais" data-app="audit"><span class="b"><img src="assets/logo-audit.png" alt=""></span>AUDIT</a>
     </div>
     <h1 class="hero-title" style="font-size: 48px; line-height: 1.15; font-weight: 800; letter-spacing: -1px; margin: 0 0 20px; color: #fff;">A família ULVA: um app para cada rotina da loja</h1>
     <p style="font-size: 18px; line-height: 1.6; color: #A3A29B; margin: 0 0 20px;">O ULVA cresceu e virou uma família: o portal de gestão e quatro apps feitos para cada pessoa da loja — encarregado, vendedor e promotor, controle de validade e auditoria. Tudo ligado no mesmo banco de dados, e agora com avisos pelo WhatsApp.</p>
@@ -120,8 +122,8 @@
 
       <!-- ULVA ROW -->
       <div class="portal-row" style="display: flex; align-items: center; gap: 56px; flex-wrap: wrap;">
-        <div style="flex: 1 1 320px; display: flex; justify-content: center;">
-          <div style="width: 240px; height: 240px; border-radius: 50%; background: radial-gradient(circle, rgba(47,123,255,0.18), rgba(47,123,255,0) 70%); display: flex; align-items: center; justify-content: center;">
+        <div class="ulva-logo-col" style="flex: 1 1 320px; display: flex; justify-content: center;">
+          <div class="ulva-logo-circle" style="width: 240px; height: 240px; border-radius: 50%; background: radial-gradient(circle, rgba(47,123,255,0.18), rgba(47,123,255,0) 70%); display: flex; align-items: center; justify-content: center;">
             <img src="assets/logo-ulva.svg" alt="ULVA" style="width: 170px; height: 170px; border-radius: 50%; object-fit: cover;">
           </div>
         </div>
@@ -129,44 +131,41 @@
           <h3 style="font-size: 28px; font-weight: 800; margin: 0 0 6px; color: #fff;">ULVA</h3>
           <p style="font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); margin: 0 0 16px;">Portal de gestão da loja · gerência</p>
           <p style="font-size: 15px; color: #A3A29B; line-height: 1.65; margin: 0 0 28px;">O centro de tudo. Vendas e meta do dia, relatório diário, estoque, ruptura e pedidos para o CD, mercadoria que chegou, validade, perdas, inventário, escala da equipe e mapa da loja. É aqui que as planilhas entram e de onde os outros apps puxam os dados.</p>
-          <a href="/ulva/" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 700;">
-            <img src="assets/logo-ulva.svg" alt="" style="width: 16px; height: 16px; border-radius: 50%; object-fit: cover;">
-            Entrar no Portal ULVA →
-          </a>
+          <button type="button" class="btn-primary btn-explicar" data-app="ulva" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 700;"><img src="assets/logo-ulva.svg" alt="" style="width: 16px; height: 16px; border-radius: 50%; object-fit: cover;">Ver tudo o que o ULVA faz →</button>
         </div>
       </div>
 
       <div>
         <h2 style="font-size: 26px; font-weight: 800; text-align: center; margin: 0 0 8px; color: #fff;">Um app para cada pessoa da loja</h2>
-        <p style="font-size: 14px; color: #A3A29B; text-align: center; margin: 0 0 32px;">Todos no celular (Android) e também na versão web, direto pelo navegador</p>
+        <p style="font-size: 14px; color: #A3A29B; text-align: center; margin: 0 0 32px;">Toque em um app para ver, ferramenta por ferramenta, o que ele faz</p>
         <div class="apps-grid">
           <div class="app-card">
             <div class="logo"><img src="assets/logo-ultra.png" alt="ULTRA"></div>
             <h4>ULTRA</h4>
             <p class="para">Resultados e gôndola</p>
             <p class="desc">Estoque, relatório diário e mensal, vendas, perdas, giro de produtos e resultados de inventário — mais a ruptura com as tratativas e os pedidos para o CD, e a conferência do folheto. Os números da loja na palma da mão, no piso da loja.</p>
-            <div class="links"><a href="/ultra/" class="btn-primary">Abrir versão web →</a></div>
+            <div class="links"><button type="button" class="btn-primary btn-explicar" data-app="ultra">Ver ferramentas e telas →</button></div>
           </div>
           <div class="app-card">
             <div class="logo"><img src="assets/logo-level.png" alt="LEVEL"></div>
             <h4>LEVEL</h4>
             <p class="para">Para vendedores e promotores</p>
             <p class="desc">Alertas de produto acabando e sugestão de pedido para o vendedor de cada indústria, cadastro de validade e localização dos produtos para os promotores. O vendedor vê quantos dias o produto aguenta, sem expor o estoque da loja.</p>
-            <div class="links"><a href="/level/app/" class="btn-primary">Abrir app →</a><a href="/level/" class="btn-sec">Portal LEVEL</a></div>
+            <div class="links"><button type="button" class="btn-primary btn-explicar" data-app="level">Ver ferramentas e telas →</button></div>
           </div>
           <div class="app-card">
             <div class="logo"><img src="assets/logo-vita.png" alt="VITA"></div>
             <h4>VITA <span class="tag-novo">MULTILOJA</span></h4>
             <p class="para">Controle de validade</p>
             <p class="desc">Cadastro de validade e tratativa dos produtos que vão vencer, com alertas antes do vencimento. Cada loja tem o seu espaço separado — dá para colocar uma loja nova e começar a usar no mesmo dia.</p>
-            <div class="links"><a href="/vita/" class="btn-primary">Abrir versão web →</a></div>
+            <div class="links"><button type="button" class="btn-primary btn-explicar" data-app="vita">Ver ferramentas e telas →</button></div>
           </div>
           <div class="app-card">
             <div class="logo"><img src="assets/logo-audit.png" alt="AUDIT"></div>
             <h4>AUDIT</h4>
             <p class="para">Prevenção e auditoria</p>
             <p class="desc">Checklists por setor, auditorias, visitas técnicas e ocorrências da loja, com foto e assinatura. O padrão de prevenção de perdas registrado e acompanhado, visita a visita.</p>
-            <div class="links"><a href="/audit/" class="btn-primary">Abrir versão web →</a></div>
+            <div class="links"><button type="button" class="btn-primary btn-explicar" data-app="audit">Ver ferramentas e telas →</button></div>
           </div>
         </div>
       </div>
@@ -259,7 +258,7 @@
   <!-- FERRAMENTAS (GLOSSÁRIO) -->
   <section id="ferramentas" style="padding: 0 48px 100px; max-width: 1080px; margin: 0 auto;">
     <h2 style="font-size: 26px; font-weight: 800; text-align: center; margin: 0 0 8px; color: #fff;">Glossário de ferramentas</h2>
-    <p style="font-size: 14px; color: #A3A29B; text-align: center; margin: 0 0 40px;">Clique em uma ferramenta pra ver do que se trata — várias com a tela real do Portal ULVA</p>
+    <p style="font-size: 14px; color: #A3A29B; text-align: center; margin: 0 0 40px;">Clique em uma ferramenta pra ver do que se trata — com as telas atuais do portal e dos apps</p>
 
     <div style="background: #1E2025; border: 1px solid #2B2D33; border-radius: 20px; padding: 28px; display: flex; gap: 32px; flex-wrap: wrap;">
 
@@ -368,31 +367,31 @@
   var LOGO_ULVA = 'assets/logo-ulva.svg';
 
   var tools = [
-    { id: 'checklist', icon: '✅', name: 'Checklist', status: 'App + Portal ULVA', img: 'assets/shot-checklist.jpg', desc: 'Checklist de auditoria por setor, com a evolução de cada um ao longo da semana. Organiza a rotina de conferência da loja e mostra onde o time está deixando passar mais.' },
+    { id: 'checklist', icon: '✅', name: 'Checklist', status: 'App + Portal ULVA', img: 'assets/telas/portal-checklist.jpg', desc: 'Checklist de auditoria por setor, com a evolução de cada um ao longo da semana. Organiza a rotina de conferência da loja e mostra onde o time está deixando passar mais.' },
     { id: 'colaboradores', icon: '👥', name: 'Colaboradores', status: 'App + Portal ULVA', img: null, desc: 'Cadastro da equipe da loja, usado como base para distribuir tarefas, acompanhar o checklist por responsável e organizar a escala do dia a dia.' },
     { id: 'criar-tarefa', icon: '✏️', name: 'Criar tarefa', status: 'App ULVA', img: null, desc: 'Criação manual de tarefas avulsas pra equipe, além das que já nascem automaticamente dos alertas de validade — pra nada depender só da memória de quem está na loja.' },
-    { id: 'perdas', icon: '📉', name: 'Perdas e Desperdício', status: 'App + Portal ULVA', img: 'assets/shot-perdas.jpg', desc: 'Painel que reúne os registros de perda e desperdício da loja, por setor e por período, pra enxergar de onde está saindo o prejuízo e agir antes que ele cresça.' },
-    { id: 'validade', icon: '📅', name: 'Validade', status: 'App + Portal ULVA', img: 'assets/shot-validade.jpg', desc: 'Cadastra os produtos da loja com data de validade e dispara alertas automáticos antes do vencimento. Cada aviso já nasce como tarefa pra alguém da equipe resolver — nada fica só no "alguém vai ver depois".' },
-    { id: 'validade-app', icon: '📅', name: 'Validade (tela do App)', status: 'App ULVA', img: 'assets/shot-validade-app.jpg', desc: 'A mesma gestão de validade do Portal, só que direto no celular: vencidos, vencendo em 7 dias e total cadastrado, filtráveis por setor, com tratativas em aberto visíveis no topo. Dá pra acompanhar sem estar na loja atrás da mesa.' },
-    { id: 'inventario', icon: '📦', name: 'Inventário', status: 'App + Portal ULVA', img: 'assets/shot-inventario.jpg', desc: 'Contagem consolidada do inventário por setor — a contagem em si é feita no celular, e aqui o gestor compara com o estoque e exporta a planilha.' },
-    { id: 'estoque', icon: '🗄️', name: 'Estoque Loja', status: 'App + Portal ULVA', img: 'assets/shot-estoque.jpg', desc: 'Consulta ao estoque real da loja, direto da última planilha importada — busca por código ou nome, com alerta de estoque crítico pra curva A.' },
-    { id: 'mural', icon: '🔔', name: 'Mural de Avisos', status: 'App + Portal ULVA', img: 'assets/shot-mural.jpg', desc: 'Mural de comunicados internos da loja, pra avisos e orientações chegarem até a equipe sem depender de grupo de WhatsApp ou papel colado na parede.' },
-    { id: 'ocorrencias', icon: '⚠️', name: 'Ocorrências', status: 'App + Portal ULVA', img: 'assets/shot-ocorrencias.jpg', desc: 'Registro de ocorrências relatadas pelos colaboradores, separadas por abertas, resolvidas e todas — pra nada ficar só no boca a boca.' },
-    { id: 'conferencia', icon: '🧾', name: 'Conferência', status: 'App + Portal ULVA', img: 'assets/shot-conferencia.jpg', desc: 'Conferência de nota fiscal, criada a partir de um PDF ou enviada pelo encarregado, pra bater o que chegou com o que foi pedido e sinalizar divergência rápido.' },
-    { id: 'pedidos', icon: '🛒', name: 'Pedidos', status: 'App + Portal ULVA', img: 'assets/shot-pedidos.jpg', desc: 'Pedidos enviados pelo encarregado e catálogo de produtos com código, embalagem, estoque no CD e giro semanal — tudo num só lugar pra decidir o que repor.' },
-    { id: 'resultados', icon: '📊', name: 'Painel Resultados', status: 'App + Portal ULVA', img: 'assets/shot-resultados.jpg', desc: 'Visão geral dos indicadores da loja em um só lugar — validade, checklist, perdas — pra acompanhar o resultado do mês sem precisar abrir tela por tela.' },
-    { id: 'vendas', icon: '📈', name: 'Vendas', status: 'App + Portal ULVA', img: 'assets/shot-vendas.jpg', desc: 'Mostra o desempenho de vendas por produto organizado em curva ABC, ajudando o gestor a identificar rápido o que mais vende, o que está parado e onde focar o reabastecimento.' },
-    { id: 'mapa-loja', icon: '🗺️', name: 'Mapa da Loja', status: 'App + Portal ULVA', img: 'assets/shot-mapa.jpg', desc: 'Mapa interativo da loja: toque numa área e veja as fotos do posicionamento dos produtos daquele setor, com zoom pra conferir detalhe. Serve de referência visual pra organização do espaço e planejamento de layout direto do celular.' },
-    { id: 'jornal-ofertas', icon: '📰', name: 'Jornal de Ofertas', status: 'Portal ULVA', img: 'assets/shot-jornal.jpg', desc: 'Envio do encarte de promoções mais recente em PDF — o mesmo arquivo que aparece pra equipe no app, sempre atualizado com a oferta da semana.' },
-    { id: 'pontas', icon: '🗂️', name: 'Pontas e Pontos Extras', status: 'App + Portal ULVA', img: 'assets/shot-pontas.jpg', desc: 'Controle das pontas de gôndola e pontos extras promocionais da loja, com foto de cada montagem, pra acompanhar o que está exposto e por quanto tempo.' },
+    { id: 'perdas', icon: '📉', name: 'Perdas e Desperdício', status: 'App + Portal ULVA', img: 'assets/telas/portal-perdas.jpg', desc: 'Painel que reúne os registros de perda e desperdício da loja, por setor e por período, pra enxergar de onde está saindo o prejuízo e agir antes que ele cresça.' },
+    { id: 'validade', icon: '📅', name: 'Validade', status: 'App + Portal ULVA', img: 'assets/telas/portal-validade.jpg', desc: 'Cadastra os produtos da loja com data de validade e dispara alertas automáticos antes do vencimento. Cada aviso já nasce como tarefa pra alguém da equipe resolver — nada fica só no "alguém vai ver depois".' },
+    { id: 'validade-app', icon: '📅', name: 'Validade (tela do App)', status: 'App VITA', img: 'assets/telas/vita-validade.jpg', desc: 'A mesma gestão de validade do Portal, só que direto no celular: vencidos, vencendo em 7 dias e total cadastrado, filtráveis por setor, com tratativas em aberto visíveis no topo. Dá pra acompanhar sem estar na loja atrás da mesa.' },
+    { id: 'inventario', icon: '📦', name: 'Inventário', status: 'App + Portal ULVA', img: 'assets/telas/portal-inventario.jpg', desc: 'Contagem consolidada do inventário por setor — a contagem em si é feita no celular, e aqui o gestor compara com o estoque e exporta a planilha.' },
+    { id: 'estoque', icon: '🗄️', name: 'Estoque Loja', status: 'App + Portal ULVA', img: 'assets/telas/portal-estoque.jpg', desc: 'Consulta ao estoque real da loja, direto da última planilha importada — busca por código ou nome, com alerta de estoque crítico pra curva A.' },
+    { id: 'mural', icon: '🔔', name: 'Mural de Avisos', status: 'App + Portal ULVA', img: 'assets/telas/portal-avisos.jpg', desc: 'Mural de comunicados internos da loja, pra avisos e orientações chegarem até a equipe sem depender de grupo de WhatsApp ou papel colado na parede.' },
+    { id: 'ocorrencias', icon: '⚠️', name: 'Ocorrências', status: 'App + Portal ULVA', img: 'assets/telas/portal-ocorrencias.jpg', desc: 'Registro de ocorrências relatadas pelos colaboradores, separadas por abertas, resolvidas e todas — pra nada ficar só no boca a boca.' },
+    { id: 'conferencia', icon: '🧾', name: 'Conferência', status: 'App + Portal ULVA', img: 'assets/telas/portal-conferencias.jpg', desc: 'Conferência de nota fiscal, criada a partir de um PDF ou enviada pelo encarregado, pra bater o que chegou com o que foi pedido e sinalizar divergência rápido.' },
+    { id: 'pedidos', icon: '🛒', name: 'Pedidos', status: 'App + Portal ULVA', img: null, desc: 'Pedidos enviados pelo encarregado e catálogo de produtos com código, embalagem, estoque no CD e giro semanal — tudo num só lugar pra decidir o que repor.' },
+    { id: 'resultados', icon: '📊', name: 'Painel Resultados', status: 'App + Portal ULVA', img: null, desc: 'Visão geral dos indicadores da loja em um só lugar — validade, checklist, perdas — pra acompanhar o resultado do mês sem precisar abrir tela por tela.' },
+    { id: 'vendas', icon: '📈', name: 'Vendas', status: 'App + Portal ULVA', img: 'assets/telas/portal-vendas-abc.jpg', desc: 'Mostra o desempenho de vendas por produto organizado em curva ABC, ajudando o gestor a identificar rápido o que mais vende, o que está parado e onde focar o reabastecimento.' },
+    { id: 'mapa-loja', icon: '🗺️', name: 'Mapa da Loja', status: 'App + Portal ULVA', img: 'assets/telas/portal-mapa.jpg', desc: 'Mapa interativo da loja: toque numa área e veja as fotos do posicionamento dos produtos daquele setor, com zoom pra conferir detalhe. Serve de referência visual pra organização do espaço e planejamento de layout direto do celular.' },
+    { id: 'jornal-ofertas', icon: '📰', name: 'Jornal de Ofertas', status: 'Portal ULVA', img: null, desc: 'Envio do encarte de promoções mais recente em PDF — o mesmo arquivo que aparece pra equipe no app, sempre atualizado com a oferta da semana.' },
+    { id: 'pontas', icon: '🗂️', name: 'Pontas e Pontos Extras', status: 'App + Portal ULVA', img: null, desc: 'Controle das pontas de gôndola e pontos extras promocionais da loja, com foto de cada montagem, pra acompanhar o que está exposto e por quanto tempo.' },
     { id: 'sobre', icon: 'ℹ️', name: 'Sobre', status: 'App ULVA', img: null, desc: 'Informações sobre a versão do sistema e dados gerais do ULVA.' },
-    { id: 'meta-dia', icon: '🎯', name: 'Meta e venda do dia', status: 'Portal ULVA · novo', img: null, desc: 'A cada planilha de vendas que entra, o ULVA mostra se a loja bateu a meta do dia e quanto falta para a meta do mês — com a meta diária cadastrada dia a dia.' },
-    { id: 'relatorio-diario', icon: '📋', name: 'Relatório diário', status: 'App ULVA · novo', img: null, desc: 'Todo dia cedo chega a notificação com a venda de ontem contra a meta e o que importa para hoje: meta do dia, quem está de folga e a quebra por setor.' },
+    { id: 'meta-dia', icon: '🎯', name: 'Meta e venda do dia', status: 'Portal ULVA · novo', img: 'assets/telas/portal-venda-dia.jpg', desc: 'A cada planilha de vendas que entra, o ULVA mostra se a loja bateu a meta do dia e quanto falta para a meta do mês — com a meta diária cadastrada dia a dia.' },
+    { id: 'relatorio-diario', icon: '📋', name: 'Relatório diário', status: 'App ULVA · novo', img: 'assets/telas/ultra-relatorio-diario.jpg', desc: 'Todo dia cedo chega a notificação com a venda de ontem contra a meta e o que importa para hoje: meta do dia, quem está de folga e a quebra por setor.' },
     { id: 'importar-vendas', icon: '⬆️', name: 'Importar vendas', status: 'Portal ULVA · novo', img: null, desc: 'Sobe a venda direto da planilha exportada do sistema da loja, um dia ou vários de uma vez, com proteção para um arquivo incompleto não estragar um dia que já estava certo.' },
-    { id: 'chegadas', icon: '🚚', name: 'Mercadoria que chegou', status: 'App + Portal ULVA · novo', img: null, desc: 'Sobe a planilha dos itens que estão chegando e o ULVA cruza com o estoque: separa o que estava em falta, o que é novo, o que estava baixo ou negativo — e o app avisa o que precisa ir primeiro para a gôndola. Dá para procurar quando cada produto chegou.' },
+    { id: 'chegadas', icon: '🚚', name: 'Mercadoria que chegou', status: 'App + Portal ULVA · novo', img: 'assets/telas/portal-chegadas.jpg', desc: 'Sobe a planilha dos itens que estão chegando e o ULVA cruza com o estoque: separa o que estava em falta, o que é novo, o que estava baixo ou negativo — e o app avisa o que precisa ir primeiro para a gôndola. Dá para procurar quando cada produto chegou.' },
     { id: 'busca-produto', icon: '🔎', name: 'Busca produto', status: 'App ULVA · novo', img: null, desc: 'Leia o código de barras e veja na hora: estoque, preço, dias de estoque, dias sem venda, venda dos últimos 30 dias em reais e em quantidade, e onde o produto fica no mapa da loja.' },
-    { id: 'ruptura-pedido', icon: '🧺', name: 'Ruptura e pedido para o CD', status: 'Portal ULVA · novo', img: null, desc: 'A ruptura levantada na loja vira fila de pedido para o CD, e os produtos cortados do pedido podem ser reenviados — com um assistente no navegador que digita o pedido item por item, com botão de pausar e continuar.' },
-    { id: 'giro', icon: '🔁', name: 'Giro de produtos', status: 'Portal ULVA', img: null, desc: 'Quanto cada produto vende por dia e por semana, para pedir na medida certa e enxergar o que está parado.' },
+    { id: 'ruptura-pedido', icon: '🧺', name: 'Ruptura e pedido para o CD', status: 'Portal ULVA · novo', img: 'assets/telas/ultra-ruptura.jpg', desc: 'A ruptura levantada na loja vira fila de pedido para o CD, e os produtos cortados do pedido podem ser reenviados — com um assistente no navegador que digita o pedido item por item, com botão de pausar e continuar.' },
+    { id: 'giro', icon: '🔁', name: 'Giro de produtos', status: 'Portal ULVA', img: 'assets/telas/portal-giro.jpg', desc: 'Quanto cada produto vende por dia e por semana, para pedir na medida certa e enxergar o que está parado.' },
     { id: 'conferencia-jornal', icon: '🗞️', name: 'Conferência do jornal', status: 'App + Portal ULVA · novo', img: null, desc: 'Os itens do folheto de ofertas ligados ao mapa da loja: cada setor confere se o produto da oferta está exposto e com estoque antes da promoção começar.' },
     { id: 'escala', icon: '🗓️', name: 'Escala da equipe', status: 'Portal ULVA · novo', img: null, desc: 'Importa a escala nova, cadastra quem entrou confirmando o setor e tira quem saiu — e o relatório do dia já sabe quem está de folga.' },
     { id: 'resultados-inventario', icon: '🧮', name: 'Resultados de inventário', status: 'Portal ULVA · novo', img: null, desc: 'O resultado de cada inventário por setor guardado com os destaques: o que mais sobrou, o que mais faltou e a porcentagem sobre a venda do período.' },
@@ -425,6 +424,10 @@
     nameEl.textContent = selected.name;
     descEl.textContent = selected.desc;
     if (selected.img) {
+      var celular = /telas\/(ultra|vita|audit|level)-/.test(selected.img);
+      imgEl.style.width = celular ? 'auto' : '100%';
+      imgEl.style.maxHeight = celular ? '520px' : 'none';
+      imgEl.style.margin = celular ? '0 auto' : '0';
       imgEl.src = selected.img;
       imgEl.alt = selected.name;
       imgEl.style.display = 'block';
@@ -433,7 +436,7 @@
       imgEl.style.display = 'none';
       placeholderEl.style.display = 'flex';
       placeholderLogoEl.src = LOGO_ULVA;
-      placeholderTextEl.textContent = 'Captura de tela real em breve';
+      placeholderTextEl.textContent = 'Tela em atualização';
     }
   }
 
@@ -502,5 +505,6 @@
   }, true);
 })();
 </script>
+<script src="assets/explicativo.js"></script>
 </body>
 </html>
