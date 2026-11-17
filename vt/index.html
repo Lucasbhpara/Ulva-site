@@ -1133,9 +1133,16 @@ function statusCorrecao(t) {
 // Modelo livre (apontamentos, sem nota): aproveitamento nulo. Fica fora das
 // médias; no lugar da nota mostra quantos apontamentos teve.
 function semNota(v) { return v.aproveitamento == null; }
+// Modelo livre (apontamentos por tema). A nota, quando houver, é dada pelo
+// próprio veterinário (0 a 100) e lida pelas faixas abaixo.
+function ehLivre(v) { return v.modelo === 'livre' || v.aproveitamento == null; }
+const FAIXAS_LIVRE = [[97, 'Excelente', '#0B7A3E', '#DCF5E6'], [94, 'Muito bom', '#15803D', '#E3F6EA'], [90, 'Bom', '#3F7D20', '#EEF7E3'], [85, 'Regular', '#A16207', '#FEF6DC'], [80, 'Atenção', '#C2410C', '#FFEDD5'], [0, 'Ruim', '#B42318', '#FDE4E1']];
+function faixaLivre(n) { const f = FAIXAS_LIVRE.find((x) => n >= x[0]) || FAIXAS_LIVRE[5]; return { texto: f[1], cor: f[2], fundo: f[3] }; }
+function notaTxt(v) { return semNota(v) ? null : ehLivre(v) ? String(v.aproveitamento).replace('.', ',') + ' · ' + faixaLivre(Number(v.aproveitamento)).texto : v.aproveitamento + '%'; }
 function mediaNota(l) { const c = l.filter((v) => !semNota(v)); return c.length ? c.reduce((a, v) => a + Number(v.aproveitamento), 0) / c.length : null; }
 function pillNota(v) {
   if (semNota(v)) return '<span class="pill" style="background:#E7EBF3;color:#3B4A6B">' + ((v.nao_conformidades || 0) ? v.nao_conformidades + ' apont.' : 'Sem apont.') + '</span>';
+  if (ehLivre(v)) { const f = faixaLivre(Number(v.aproveitamento)); return '<span class="pill" style="background:' + f.fundo + ';color:' + f.cor + '">' + notaTxt(v) + '</span>'; }
   const b = banda(Number(v.aproveitamento)); return '<span class="pill ' + b.classe + '">' + v.aproveitamento + '%</span>';
 }
 function paginaGeral() {
@@ -1192,7 +1199,7 @@ async function desenharMapa(id, o) {
   Object.values(porLoja).forEach((v) => {
     const b = semNota(v) ? { cor: '#5B6280' } : banda(Number(v.aproveitamento));
     L.circleMarker([v.localizacao_lat, v.localizacao_lng], { radius: 8, color: '#fff', weight: 2, fillColor: b.cor, fillOpacity: 0.95 })
-      .bindTooltip('Loja ' + esc(v.unidade || '—'), { permanent: !o.compacto, direction: 'top', offset: [0, -8], className: 'rotulo-loja' }).bindPopup('<b>Loja ' + esc(v.unidade || '—') + '</b><br>Última visita: ' + esc(nomeSetor(v.setor)) + ' · ' + (semNota(v) ? (v.nao_conformidades || 0) + ' apontamento(s)' : v.aproveitamento + '%') + '<br>' + dataHora(v.finalizada_em) + '<br>' + esc(v.veterinario_nome)).addTo(m);
+      .bindTooltip('Loja ' + esc(v.unidade || '—'), { permanent: !o.compacto, direction: 'top', offset: [0, -8], className: 'rotulo-loja' }).bindPopup('<b>Loja ' + esc(v.unidade || '—') + '</b><br>Última visita: ' + esc(nomeSetor(v.setor)) + ' · ' + (semNota(v) ? (v.nao_conformidades || 0) + ' apontamento(s)' : notaTxt(v)) + '<br>' + dataHora(v.finalizada_em) + '<br>' + esc(v.veterinario_nome)).addTo(m);
     pontos.push([v.localizacao_lat, v.localizacao_lng]);
   });
   // veterinários: última posição
@@ -1254,7 +1261,7 @@ async function dadosVisita(id) {
     v.tarefa_id ? sb.from('correcao_itens').select('*').eq('tarefa_id', v.tarefa_id).order('criado_em') : Promise.resolve({ data: [] }),
     sb.from('visitas_tecnicas').select('aproveitamento, finalizada_em, numero').eq('setor', v.setor).eq('status', 'finalizada').eq('unidade', v.unidade || '').lt('finalizada_em', v.finalizada_em).order('finalizada_em', { ascending: false }).limit(15),
   ]);
-  return { v, respostas: resp || [], tarefa: tarefaR.data, itens: itensR.data || [], anterior: (antR.data || []).find((x) => x.aproveitamento != null) || null };
+  return { v, respostas: resp || [], tarefa: tarefaR.data, itens: itensR.data || [], anterior: (antR.data || []).find((x) => x.aproveitamento != null && ehLivre(x) === ehLivre(v)) || null };
 }
 // Apontamentos do modelo livre, agrupados pelos 5 temas.
 const TEMAS_LIVRE = ['Limpeza', 'Organização', 'Validade / Tara', 'Planilhas e processos administrativos', 'Outros'];
@@ -1293,7 +1300,7 @@ function planoAcao(d) {
   const resp = d.v.setor === 'geral' ? 'Gerência' : 'Encarregado · ' + nomeSetor(d.v.setor);
   const prazo = d.tarefa && d.tarefa.prazo;
   const porId = {}; d.respostas.forEach((r) => { porId[r.id] = r; });
-  const rotuloItem = (texto, rid) => (semNota(d.v) && porId[rid] && porId[rid].justificativa ? texto + ' — ' + porId[rid].justificativa : texto);
+  const rotuloItem = (texto, rid) => (ehLivre(d.v) && porId[rid] && porId[rid].justificativa ? texto + ' — ' + porId[rid].justificativa : texto);
   const linhas = d.itens.length ? d.itens.map((i) => ({ item: rotuloItem(i.pergunta_texto, i.resposta_id), critico: i.critico, st: i.aprovacao === 'aprovado' ? ['Concluído', 'verde'] : i.aprovacao === 'devolvido' ? ['Devolvido', 'vermelho'] : i.status === 'corrigido' ? ['Corrigido · aguardando', 'laranja'] : i.status === 'nao_possivel' ? ['Não foi possível', ''] : ['Pendente', 'vermelho'], quem: i.respondido_por }))
     : nc.map((r) => ({ item: rotuloItem(r.pergunta_texto, r.id), critico: r.critico, st: ['Pendente', 'vermelho'], quem: null }));
   return { linhas, resp, prazo };
@@ -1325,7 +1332,7 @@ async function abrirVisita(id) {
     '<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap"><button class="btn-acao secundario" onclick="renderizar()">‹ Voltar</button><button class="btn-acao" onclick="baixarPdf()">⬇ Baixar PDF</button>' + (visitasDoDia(v).length > 1 ? '<button class="btn-acao" onclick="baixarPdfCompleto()">🖨 PDF completo do dia (' + visitasDoDia(v).length + ' setores, um por folha)</button>' : '') + '</div>' +
     cabecalho(nomeSetor(v.setor) + ' · Loja ' + esc(v.unidade || '—'), (numeroDoc(v) ? '<b>Nº ' + numeroDoc(v) + '</b> · ' : '') + 'Técnico veterinário: ' + esc(v.veterinario_nome) + ' · finalizada em ' + dataHora(v.finalizada_em), ' ') +
     (v.localizacao_lat != null ? '<div class="sub-box" style="margin:-16px 0 16px">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + ' — <a href="https://www.google.com/maps?q=' + v.localizacao_lat + ',' + v.localizacao_lng + '" target="_blank">ver no mapa</a></div>' : '') +
-    (semNota(v) ? '<div class="resumo-perdas">' + kpiBox('Modelo', 'Apontamentos livres', null, 'sem nota') + kpiBox('Apontamentos', v.nao_conformidades || 0, (v.nao_conformidades || 0) ? 'var(--red)' : 'var(--green)') + kpiBox('Correção', statusCorrecao(d.tarefa).txt) + '</div>' + livreHtmlPortal(d) :
+    (ehLivre(v) ? '<div class="resumo-perdas">' + (semNota(v) ? kpiBox('Modelo', 'Apontamentos livres', null, 'sem nota') : kpiBox('Nota do veterinário', String(v.aproveitamento).replace('.', ','), faixaLivre(Number(v.aproveitamento)).cor, faixaLivre(Number(v.aproveitamento)).texto)) + kpiBox('Apontamentos', v.nao_conformidades || 0, (v.nao_conformidades || 0) ? 'var(--red)' : 'var(--green)') + kpiBox('Correção', statusCorrecao(d.tarefa).txt) + '</div>' + livreHtmlPortal(d) :
     '<div class="resumo-perdas">' +
       kpiBox('Aproveitamento', v.aproveitamento + '%', b.cor, b.texto + (delta == null ? ' · primeira visita do setor' : ' · ' + (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(1).replace('.', ',') + ' pts vs ' + dataCurta(d.anterior.finalizada_em))) +
       kpiBox('Pontos', v.pontos_realizados + ' / ' + v.pontos_possiveis) +
@@ -1361,12 +1368,13 @@ function folhaPdf(d) {
   const comp = delta == null ? 'primeira avaliação do setor' : '<span style="color:' + (delta >= 0 ? '#15803D' : '#B42318') + ';font-weight:600">' + (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(1).replace('.', ',') + ' pts</span> vs ' + dataCurta(d.anterior.finalizada_em) + ' (' + d.anterior.aproveitamento + '%)';
   const kpi = (r, val, cor, sub) => '<div class="k"><div class="kn">' + r + '</div><div class="kv"' + (cor ? ' style="color:' + cor + '"' : '') + '>' + val + '</div>' + (sub ? '<div class="ks">' + sub + '</div>' : '') + '</div>';
   const nc = v.nao_conformidades || 0, cr = v.criticos_nao_conformes || 0;
-  const kpisHtml = semNota(v)
-    ? kpi('Apontamentos', nc, nc ? '#B42318' : '#15803D') + kpi('Temas com apontamento', apontamentosPorTema(d).filter((g) => g.lista.length).length + ' de ' + TEMAS_LIVRE.length) + kpi('Fotos', d.respostas.reduce((a, r) => a + fotosDe(r).length, 0))
+  const fxL = semNota(v) ? null : faixaLivre(Number(v.aproveitamento));
+  const kpisHtml = ehLivre(v)
+    ? (fxL ? kpi('Nota do veterinário', String(v.aproveitamento).replace('.', ',') + '<span class="classif" style="color:' + fxL.cor + ';background:' + fxL.fundo + '">' + fxL.texto + '</span>', fxL.cor) : '') + kpi('Apontamentos', nc, nc ? '#B42318' : '#15803D') + kpi('Temas com apontamento', apontamentosPorTema(d).filter((g) => g.lista.length).length + ' de ' + TEMAS_LIVRE.length) + kpi('Fotos', d.respostas.reduce((a, r) => a + fotosDe(r).length, 0))
     : kpi('Aproveitamento', pct + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor, comp) + kpi('Pontos', v.pontos_realizados + ' / ' + v.pontos_possiveis) + kpi('Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D');
   const corpo = (v.localizacao_lat != null ? '<div class="info">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + '</div>' : '') +
     '<div class="kpis">' + kpisHtml + '</div>' +
-    (semNota(v) ? livreHtmlPdf(d) : itens + plano) + (v.consideracoes_finais ? '<div class="lbl">Considerações finais</div><div class="caixa">' + esc(v.consideracoes_finais) + '</div>' : '') + acompanhanteHtml(v, true) + '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div>';
+    (ehLivre(v) ? livreHtmlPdf(d) : itens + plano) + (v.consideracoes_finais ? '<div class="lbl">Considerações finais</div><div class="caixa">' + esc(v.consideracoes_finais) + '</div>' : '') + acompanhanteHtml(v, true) + '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div>';
   return '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica</div><h1>' + esc(nomeSetor(v.setor)) + '</h1></div></div><div class="d">' + (numeroDoc(v) ? '<span class="ndoc">Nº ' + numeroDoc(v) + '</span><br>' : '') + 'Loja ' + esc(v.unidade || '—') + '<br>Téc. veterinário: ' + esc(v.veterinario_nome) + '<br>Finalizada em ' + dataHora(v.finalizada_em) + '</div></div>' +
     '<div class="wrap">' + corpo + '</div>' + rodapePdf();
 }
@@ -1429,7 +1437,7 @@ async function baixarPdfCompleto() {
   const b = banda(media == null ? 100 : media);
   const kpi = (r, val, cor) => '<div class="k"><div class="kn">' + r + '</div><div class="kv"' + (cor ? ' style="color:' + cor + '"' : '') + '>' + val + '</div></div>';
   const vets = Array.from(new Set(vs.map((x) => x.veterinario_nome).filter(Boolean))).join(', ');
-  const linhas = vs.map((x, i) => { const bx = semNota(x) ? { cor: '#5B6280' } : banda(Number(x.aproveitamento)); return '<tr><td class="pn">' + (i + 1) + '</td><td><b>' + esc(nomeSetor(x.setor)) + '</b>' + (numeroDoc(x) ? '<div class="base">Nº ' + numeroDoc(x) + '</div>' : '') + '</td><td class="pc" style="color:' + bx.cor + ';font-weight:700">' + (semNota(x) ? 'Sem nota' : x.aproveitamento + '%') + '</td><td class="pc" style="color:' + ((x.nao_conformidades || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.nao_conformidades || 0) + '</td><td class="pc" style="color:' + ((x.criticos_nao_conformes || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.criticos_nao_conformes || 0) + '</td><td>' + (x.setor === 'geral' ? 'Gerência' : 'Encarregado · ' + esc(nomeSetor(x.setor))) + '</td></tr>'; }).join('');
+  const linhas = vs.map((x, i) => { const bx = semNota(x) ? { cor: '#5B6280' } : banda(Number(x.aproveitamento)); return '<tr><td class="pn">' + (i + 1) + '</td><td><b>' + esc(nomeSetor(x.setor)) + '</b>' + (numeroDoc(x) ? '<div class="base">Nº ' + numeroDoc(x) + '</div>' : '') + '</td><td class="pc" style="color:' + bx.cor + ';font-weight:700">' + (semNota(x) ? 'Sem nota' : notaTxt(x)) + '</td><td class="pc" style="color:' + ((x.nao_conformidades || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.nao_conformidades || 0) + '</td><td class="pc" style="color:' + ((x.criticos_nao_conformes || 0) ? '#B42318' : '#15803D') + ';font-weight:700">' + (x.criticos_nao_conformes || 0) + '</td><td>' + (x.setor === 'geral' ? 'Gerência' : 'Encarregado · ' + esc(nomeSetor(x.setor))) + '</td></tr>'; }).join('');
   const v = d0.v;
   const resumo = '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica · resumo</div><h1>Loja ' + esc(v.unidade || '—') + '</h1></div></div><div class="d">' + new Date(v.finalizada_em).toLocaleDateString('pt-BR') + '<br>Téc. veterinário: ' + esc(vets || '—') + '<br>' + vs.length + ' setor(es) avaliado(s)</div></div>' +
     '<div class="wrap"><div class="kpis">' + (media == null ? '' : kpi('Média dos setores', media.toFixed(1).replace('.', ',').replace(',0', '') + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor)) + kpi(media == null ? 'Apontamentos' : 'Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D') + '</div>' +
@@ -1755,7 +1763,7 @@ async function abrirRelatorioSemana(vetId, deslocSemana) {
   const bg = mediaGeral == null ? null : banda(mediaGeral);
   const tabSetores = porSetor.length ? '<table class="plano"><thead><tr><th>Setor</th><th class="pc">Visitas</th><th class="pc">Nota média</th><th class="pc">NC</th><th class="pc">Apontamentos</th></tr></thead><tbody>' + porSetor.map((x) => { const b = x.media == null ? null : banda(x.media); return '<tr><td><b>' + esc(x.s.nome) + '</b></td><td class="pc">' + x.l.length + '</td><td class="pc" style="font-weight:700;color:' + (b ? b.cor : '#5B6280') + '">' + (x.media == null ? 'Sem nota' : x.media.toFixed(1).replace('.', ',') + '%') + '</td><td class="pc">' + x.nc + '</td><td class="pc">' + x.apont + '</td></tr>'; }).join('') + '</tbody></table>' : '<div class="caixa">Nenhuma visita finalizada nesta semana.</div>';
   const tabLojas = porLoja.length ? '<table class="plano"><thead><tr><th>Loja</th><th class="pc">Visitas</th><th class="pc">Nota média</th><th class="pc">Apontamentos</th><th class="pc">Críticos</th></tr></thead><tbody>' + porLoja.sort((a, b) => (a.media ?? 999) - (b.media ?? 999) || b.apont - a.apont).map((x) => '<tr' + (pior && x.u === pior.u ? ' style="background:#FEF2F2"' : '') + '><td><b>' + esc(x.u) + '</b> ' + esc(nomeLoja(x.u)) + (rotaSet.has(x.u) ? '' : ' <span class="base">(fora da rota)</span>') + '</td><td class="pc">' + x.l.length + '</td><td class="pc">' + (x.media == null ? '—' : x.media.toFixed(1).replace('.', ',') + '%') + '</td><td class="pc">' + x.apont + '</td><td class="pc">' + x.crit + '</td></tr>').join('') + '</tbody></table>' : '';
-  const lista = visitas.length ? '<table class="plano"><thead><tr><th>Data</th><th>Loja</th><th>Setor</th><th class="pc">Resultado</th></tr></thead><tbody>' + visitas.slice().sort((a, b) => a.finalizada_em.localeCompare(b.finalizada_em)).map((v) => '<tr><td>' + dataHora(v.finalizada_em) + '</td><td>' + esc(v.unidade || '—') + ' ' + esc(nomeLoja(String(v.unidade))) + '</td><td>' + esc(nomeSetor(v.setor)) + '</td><td class="pc">' + (semNota(v) ? (v.nao_conformidades || 0) + ' apont.' : v.aproveitamento + '%') + '</td></tr>').join('') + '</tbody></table>' : '';
+  const lista = visitas.length ? '<table class="plano"><thead><tr><th>Data</th><th>Loja</th><th>Setor</th><th class="pc">Resultado</th></tr></thead><tbody>' + visitas.slice().sort((a, b) => a.finalizada_em.localeCompare(b.finalizada_em)).map((v) => '<tr><td>' + dataHora(v.finalizada_em) + '</td><td>' + esc(v.unidade || '—') + ' ' + esc(nomeLoja(String(v.unidade))) + '</td><td>' + esc(nomeSetor(v.setor)) + '</td><td class="pc">' + (semNota(v) ? (v.nao_conformidades || 0) + ' apont.' : notaTxt(v)) + '</td></tr>').join('') + '</tbody></table>' : '';
   const faltam = vet.rota.filter((r) => !lojasVis.includes(String(r.loja)));
   const periodo = dataCurta(ini.toISOString()) + ' a ' + dataCurta(new Date(fim - 1).toISOString()) + '/' + fim.getFullYear();
   const corpo = '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica · relatório semanal</div><h1>' + esc(vet.nome) + '</h1></div></div><div class="d">Semana de ' + periodo + '<br>' + esc((vet.contato || []).join(' · ')) + '<br>Rota: ' + vet.rota.length + ' lojas</div></div>' +
@@ -1838,7 +1846,7 @@ async function iniciarDemo() {
         const vis = { id: 'dv' + num, numero: num, setor, status: 'finalizada', unidade: u, veterinario_nome: v.n, veterinario_matricula: v.m, iniciada_em: iso(fim.getTime() - 50 * 60000), finalizada_em: iso(fim.getTime()), aproveitamento: pct, pontos_realizados: Math.round(pPos * pct / 100), pontos_possiveis: pPos, nao_conformidades: nc, criticos_nao_conformes: crit, localizacao_lat: loja[2] + (rnd() - 0.5) * 0.002, localizacao_lng: loja[3] + (rnd() - 0.5) * 0.002, localizacao_endereco: 'Supermercados BH · ' + loja[1], tarefa_id: null, acompanhante_nome: escolhe(['José Carlos', 'Marcos Vinícius', 'Adriana Souza', 'Paulo Henrique']), acompanhante_funcao: setor === 'geral' ? 'Gerente' : 'Encarregado', acompanhante_assinatura: { largura: 300, altura: 100, tracos: escolhe(['M20 70 L40 40 L60 72 L80 35 L100 70 L130 50 L160 65 M180 30 L190 75 L230 55 L270 60', 'M30 60 L55 30 L70 75 L95 40 L120 70 L150 45 L190 68 L240 50', 'M25 75 L45 35 L75 70 L90 45 L115 72 M140 40 L160 72 L200 52 L260 66']) }, consideracoes_finais: pct < 70 ? 'Reforçar treinamento da equipe e acompanhar as correções nos próximos 7 dias.' : null };
         // Últimas 3 semanas: metade das visitas no modelo livre (apontamentos, sem nota).
         if (dia <= 20 && setor !== 'geral' && rnd() < 0.5) {
-          vis.aproveitamento = null; vis.pontos_realizados = null; vis.pontos_possiveis = null; vis.criticos_nao_conformes = 0;
+          vis.modelo = 'livre'; vis.aproveitamento = Math.round(Math.max(62, Math.min(100, pct + (rnd() - 0.3) * 12)) * 10) / 10; vis.pontos_realizados = null; vis.pontos_possiveis = null; vis.criticos_nao_conformes = 0;
           vis.nao_conformidades = Math.floor(rnd() * 5); vis.livre = true;
         }
         if (vis.nao_conformidades > 0) {
@@ -1889,7 +1897,7 @@ async function iniciarDemo() {
   function respostasDe(vid) {
     const v = db.visitas_tecnicas.find((x) => x.id === vid); if (!v) return [];
     const ja = db.visita_tecnica_respostas.filter((r) => r.visita_id === vid); if (ja.length) return ja;
-    if (v.aproveitamento == null) {
+    if (v.modelo === 'livre' || v.aproveitamento == null) {
       const ex = { 'Limpeza': ['Ralo da sala de preparo com acúmulo de gordura.', 'Paredes da câmara com sujeira acumulada.', 'Grelhas do balcão refrigerado sujas.'], 'Organização': ['Caixas direto no chão da câmara.', 'Equipamento em desuso dentro da câmara.', 'Produtos de limpeza junto de alimentos.'], 'Validade / Tara': ['Bandejas sem etiqueta de validade no autosserviço.', 'Produto vencido encontrado na exposição.', 'Fracionado com tara errada.'], 'Planilhas e processos administrativos': ['Planilha de temperatura sem registro da noite.', 'Controle de higienização sem assinatura.'], 'Outros': ['Colaborador sem touca na área de manipulação.', 'Lixeira sem tampa com pedal.'] };
       const temas = Object.keys(ex), out = [];
       for (let i = 0; i < v.nao_conformidades; i++) { const t = escolhe(temas); out.push({ id: vid + '-a' + i, visita_id: vid, pergunta_id: null, pergunta_texto: t, critico: false, resposta: 'nao', justificativa: escolhe(ex[t]), fotos_urls: [], respondida_em: new Date(new Date(v.finalizada_em).getTime() - (v.nao_conformidades - i) * 60000).toISOString() }); }
