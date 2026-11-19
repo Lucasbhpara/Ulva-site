@@ -1300,7 +1300,7 @@ function respLojaPdf(d, r) {
 }
 function devolutivaHtml(qtd, v) {
   const campo = (t) => '<div class="dev-c"><div class="dev-t">' + t + '</div><div class="dev-l">Nome:</div><div class="dev-l">Assinatura:</div><div class="dev-l">Data: ____/____/______</div></div>';
-  const qr = qtd && v && !v.tarefa_id && linkCorrecao(v) ? '<div class="dev-qr"><img src="' + qrCorrecao(v, 240) + '" width="84" height="84"><div><b>Prefere responder pelo celular?</b><br>Aponte a câmera para o código, diga o que foi feito em cada item e mande foto. Não precisa de app nem de senha.<br><span style="color:#5B6280;word-break:break-all">' + linkCorrecao(v) + '</span></div></div>' : '';
+  const qr = qtd && v && !v.tarefa_id && linkCorrecao(v) ? '<div class="dev-qr"><img src="' + qrCorrecao(v, 240) + '" width="84" height="84"><div><b>Prefere responder pelo celular?</b><br>Aponte a câmera para o QR code, digite o código de acesso <b style="font-size:13px;letter-spacing:.15em">' + esc(v.pin_loja || '') + '</b>, diga o que foi feito em cada item e mande foto. Não precisa de app.<br><span style="color:#5B6280;word-break:break-all">' + linkCorrecao(v) + '</span></div></div>' : '';
   return '<div class="dev"><div class="assin-tit">Devolutiva da loja</div><div class="dev-p">' + (qtd ? qtd + (qtd === 1 ? ' item para corrigir. ' : ' itens para corrigir. ') : '') + 'Prazo para correção: ____/____/______ &nbsp;·&nbsp; Devolver esta folha assinada ao gerente.</div>' + qr + '<div class="dev-g">' + campo('Encarregado do setor — ciente e corrigido') + campo('Gerente — conferido') + '</div></div>';
 }
 function livreHtmlPdf(d) {
@@ -1347,7 +1347,7 @@ function cartaoLinkLoja(v) {
   const l = linkCorrecao(v); if (!l || !(v.nao_conformidades || 0)) return '';
   const msg = 'Correção da Visita Técnica — Loja ' + (v.unidade || '') + ' · ' + nomeSetor(v.setor) + ' (' + (numeroDoc(v) || '') + '). Abra o link, diga o que foi feito em cada item e mande foto: ' + l;
   return '<div class="item-card" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:18px"><img src="' + qrCorrecao(v, 180) + '" width="96" height="96" alt="QR code" style="border-radius:8px">' +
-    '<div style="flex:1;min-width:220px"><div style="font-weight:800">Link para a loja corrigir</div><div class="sub-box">O encarregado abre no celular, sem app e sem login, responde cada item com foto. A resposta aparece aqui para conferir.</div>' +
+    '<div style="flex:1;min-width:220px"><div style="font-weight:800">Link para a loja corrigir · código <span class="mono" style="font-size:18px;letter-spacing:.15em;color:var(--accent)">' + esc(v.pin_loja || '') + '</span></div><div class="sub-box">O encarregado abre no celular, digita o código e responde cada item com foto. O código vem impresso na folha; pelo WhatsApp, mande o link e passe o código à parte. A resposta aparece aqui para conferir.</div>' +
     '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn-acao mini" onclick="copiarLinkLoja()">Copiar link</button><a class="btn-acao secundario mini" style="text-decoration:none" target="_blank" href="https://wa.me/?text=' + encodeURIComponent(msg) + '">Enviar no WhatsApp</a><a class="btn-acao secundario mini" style="text-decoration:none" target="_blank" href="' + l + '">Abrir</a></div></div></div>';
 }
 function copiarLinkLoja() {
