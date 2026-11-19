@@ -1070,6 +1070,12 @@ async function carregarBase() {
   estado.visitas = visitas; estado.perguntas = p.data || [];
   try { await carregarRotas(true); } catch (e) { estado.rotas = estado.rotas || { vets: [], lojas: {} }; }
   const ids = visitas.map((x) => x.tarefa_id).filter(Boolean);
+  estado.corrLoja = [];
+  const vids = visitas.filter((x) => (x.nao_conformidades || 0) > 0).map((x) => x.id);
+  for (let i = 0; i < vids.length; i += 150) {
+    const { data } = await sb.from('vt_correcao_loja').select('visita_id, resposta_id, status, avaliacao, respondido_por, respondido_em').in('visita_id', vids.slice(i, i + 150));
+    estado.corrLoja.push(...(data || []));
+  }
   estado.tarefas = [];
   for (let i = 0; i < ids.length; i += 150) {
     const { data } = await sb.from('tarefas').select('*').in('id', ids.slice(i, i + 150));
@@ -1255,13 +1261,15 @@ function paginaVisitas() {
 }
 async function dadosVisita(id) {
   const v = estado.visitas.find((x) => x.id === id) || (await sb.from('visitas_tecnicas').select('*').eq('id', id).single()).data;
-  const [{ data: resp }, tarefaR, itensR, antR] = await Promise.all([
+  const [{ data: resp }, tarefaR, itensR, antR, corrR] = await Promise.all([
     sb.from('visita_tecnica_respostas').select('*').eq('visita_id', id),
     v.tarefa_id ? sb.from('tarefas').select('*').eq('id', v.tarefa_id).maybeSingle() : Promise.resolve({ data: null }),
     v.tarefa_id ? sb.from('correcao_itens').select('*').eq('tarefa_id', v.tarefa_id).order('criado_em') : Promise.resolve({ data: [] }),
     sb.from('visitas_tecnicas').select('aproveitamento, finalizada_em, numero').eq('setor', v.setor).eq('status', 'finalizada').eq('unidade', v.unidade || '').lt('finalizada_em', v.finalizada_em).order('finalizada_em', { ascending: false }).limit(15),
+    sb.from('vt_correcao_loja').select('*').eq('visita_id', id),
   ]);
-  return { v, respostas: resp || [], tarefa: tarefaR.data, itens: itensR.data || [], anterior: (antR.data || []).find((x) => x.aproveitamento != null && ehLivre(x) === ehLivre(v)) || null };
+  const corrLoja = {}; (corrR.data || []).forEach((c) => { corrLoja[c.resposta_id] = c; });
+  return { v, respostas: resp || [], tarefa: tarefaR.data, itens: itensR.data || [], corrLoja, anterior: (antR.data || []).find((x) => x.aproveitamento != null && ehLivre(x) === ehLivre(v)) || null };
 }
 // Apontamentos do modelo livre, agrupados pelos 5 temas.
 const TEMAS_LIVRE = ['Limpeza', 'Organização', 'Validade / Tara', 'Planilhas e processos administrativos', 'Outros'];
@@ -1282,15 +1290,22 @@ function livreHtmlPortal(d) {
 // espaço em cada item para o encarregado escrever o que fez, e no fim
 // prazo e assinaturas do encarregado e do gerente.
 const ESPACO_CORRECAO = '<div class="corr"><div class="corr-l"><b>O que foi feito:</b></div><div class="corr-l"></div><div class="corr-r"><span>Data: ____/____/______</span><span>Rubrica: ____________________</span></div></div>';
-function devolutivaHtml(qtd) {
+function respLojaPdf(d, r) {
+  const c = d && d.corrLoja && d.corrLoja[r.id];
+  if (!c || c.avaliacao === 'devolvido') return ESPACO_CORRECAO;
+  return '<div class="det" style="margin-top:6px"><b>' + (c.status === 'nao_possivel' ? 'Não foi possível' : 'O que foi feito') + ':</b> ' + esc(c.comentario || '—') + '<br><b>Respondido por:</b> ' + esc(c.respondido_por || '—') + ' em ' + dataHora(c.respondido_em) + (c.avaliado_por ? '<br><b>' + (c.avaliacao === 'aprovado' ? 'Aprovado' : 'Conferido') + ' por:</b> ' + esc(c.avaliado_por) : ' · aguardando conferência') + '</div>' +
+    (c.fotos_urls && c.fotos_urls.length ? '<div class="fotos">' + c.fotos_urls.map((u) => '<img class="foto" src="' + u + '">').join('') + '</div>' : '');
+}
+function devolutivaHtml(qtd, v) {
   const campo = (t) => '<div class="dev-c"><div class="dev-t">' + t + '</div><div class="dev-l">Nome:</div><div class="dev-l">Assinatura:</div><div class="dev-l">Data: ____/____/______</div></div>';
-  return '<div class="dev"><div class="assin-tit">Devolutiva da loja</div><div class="dev-p">' + (qtd ? qtd + (qtd === 1 ? ' item para corrigir. ' : ' itens para corrigir. ') : '') + 'Prazo para correção: ____/____/______ &nbsp;·&nbsp; Devolver esta folha assinada ao gerente.</div><div class="dev-g">' + campo('Encarregado do setor — ciente e corrigido') + campo('Gerente — conferido') + '</div></div>';
+  const qr = qtd && v && !v.tarefa_id && linkCorrecao(v) ? '<div class="dev-qr"><img src="' + qrCorrecao(v, 240) + '" width="84" height="84"><div><b>Prefere responder pelo celular?</b><br>Aponte a câmera para o código, diga o que foi feito em cada item e mande foto. Não precisa de app nem de senha.<br><span style="color:#5B6280;word-break:break-all">' + linkCorrecao(v) + '</span></div></div>' : '';
+  return '<div class="dev"><div class="assin-tit">Devolutiva da loja</div><div class="dev-p">' + (qtd ? qtd + (qtd === 1 ? ' item para corrigir. ' : ' itens para corrigir. ') : '') + 'Prazo para correção: ____/____/______ &nbsp;·&nbsp; Devolver esta folha assinada ao gerente.</div>' + qr + '<div class="dev-g">' + campo('Encarregado do setor — ciente e corrigido') + campo('Gerente — conferido') + '</div></div>';
 }
 function livreHtmlPdf(d) {
   let n = 0;
   return apontamentosPorTema(d).map((g) => '<div class="lbl">' + esc(g.tema) + (g.lista.length ? ' <span class="q">· ' + g.lista.length + ' apontamento(s)</span>' : '') + '</div>' +
     (g.lista.length ? g.lista.map((r) => '<div class="item ruim"><div class="topo"><div class="texto">' + (++n) + '. ' + esc(r.justificativa || '(sem texto)') + '</div><span class="badge b-nao">Corrigir</span></div>' +
-      (fotosDe(r).length ? '<div class="fotos">' + fotosDe(r).map((u) => '<img class="foto" src="' + u + '">').join('') + '</div>' : '') + ESPACO_CORRECAO + '</div>').join('')
+      (fotosDe(r).length ? '<div class="fotos">' + fotosDe(r).map((u) => '<img class="foto" src="' + u + '">').join('') + '</div>' : '') + respLojaPdf(d, r) + '</div>').join('')
       : '<div class="item"><div class="topo"><div class="texto" style="color:#8A93A5">Sem apontamentos</div><span class="badge b-sim">OK</span></div></div>')).join('');
 }
 // Responsável da loja que acompanhou a visita (nome, função e assinatura).
@@ -1303,6 +1318,67 @@ function acompanhanteHtml(v, pdf) {
   return pdf ? '<div class="assin"><div class="assin-tit">Acompanhado por</div><div class="assin-linha">' + svg + '</div><div class="assin-nome">' + nome + '</div></div>'
     : '<h3 class="tit-secao">Acompanhado por</h3><div class="item-card" style="text-align:center"><div style="border-bottom:1px solid #8A93A5;padding-bottom:4px">' + svg + '</div><div style="font-weight:700;margin-top:6px">' + nome + '</div></div>';
 }
+// ---- Correção pela loja (link sem login: vt/corrigir/?t=TOKEN)
+function linkCorrecao(v) { return v && v.token_loja ? 'https://ulva.com.br/vt/corrigir/?t=' + v.token_loja : ''; }
+function qrCorrecao(v, tam) { const l = linkCorrecao(v); return l ? 'https://api.qrserver.com/v1/create-qr-code/?size=' + (tam || 220) + 'x' + (tam || 220) + '&margin=0&data=' + encodeURIComponent(l) : ''; }
+function stCorrLoja(c) {
+  if (!c) return ['Pendente', 'vermelho'];
+  if (c.avaliacao === 'aprovado') return ['Concluído', 'verde'];
+  if (c.avaliacao === 'devolvido') return ['Devolvido', 'vermelho'];
+  return c.status === 'nao_possivel' ? ['Não foi possível · conferir', 'laranja'] : ['Corrigido · aguardando', 'laranja'];
+}
+// Resumo da correção pela loja de uma visita (para a lista de Correções).
+function resumoCorrLoja(v) {
+  const nc = v.nao_conformidades || 0; if (!nc) return null;
+  const cs = (estado.corrLoja || []).filter((c) => c.visita_id === v.id);
+  const aprov = cs.filter((c) => c.avaliacao === 'aprovado').length, dev = cs.filter((c) => c.avaliacao === 'devolvido').length, aguard = cs.filter((c) => !c.avaliacao).length;
+  const ultimo = cs.slice().sort((a, b) => (b.respondido_em || '').localeCompare(a.respondido_em || ''))[0];
+  let txt, cls;
+  if (aprov >= nc) { txt = 'Concluída'; cls = 'verde'; }
+  else if (aguard) { txt = aguard + ' para conferir · ' + cs.length + ' de ' + nc + ' respondidos'; cls = 'laranja'; }
+  else if (dev) { txt = 'Devolvida · ' + dev; cls = 'vermelho'; }
+  else if (cs.length) { txt = cs.length + ' de ' + nc + ' respondidos'; cls = 'laranja'; }
+  else { txt = 'Sem resposta da loja'; cls = 'vermelho'; }
+  return { txt, cls, ok: aprov >= nc, quem: ultimo ? ultimo.respondido_por : null };
+}
+function cartaoLinkLoja(v) {
+  const l = linkCorrecao(v); if (!l || !(v.nao_conformidades || 0)) return '';
+  const msg = 'Correção da Visita Técnica — Loja ' + (v.unidade || '') + ' · ' + nomeSetor(v.setor) + ' (' + (numeroDoc(v) || '') + '). Abra o link, diga o que foi feito em cada item e mande foto: ' + l;
+  return '<div class="item-card" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:18px"><img src="' + qrCorrecao(v, 180) + '" width="96" height="96" alt="QR code" style="border-radius:8px">' +
+    '<div style="flex:1;min-width:220px"><div style="font-weight:800">Link para a loja corrigir</div><div class="sub-box">O encarregado abre no celular, sem app e sem login, responde cada item com foto. A resposta aparece aqui para conferir.</div>' +
+    '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn-acao mini" onclick="copiarLinkLoja()">Copiar link</button><a class="btn-acao secundario mini" style="text-decoration:none" target="_blank" href="https://wa.me/?text=' + encodeURIComponent(msg) + '">Enviar no WhatsApp</a><a class="btn-acao secundario mini" style="text-decoration:none" target="_blank" href="' + l + '">Abrir</a></div></div></div>';
+}
+function copiarLinkLoja() {
+  const l = linkCorrecao(estado.visitaAberta && estado.visitaAberta.v); if (!l) return;
+  (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => toast('Link copiado.'), () => prompt('Copie o link:', l));
+}
+// Respostas que a loja mandou pelo link, com aprovar/devolver.
+function respostasLojaHtml(d) {
+  if (d.itens.length) return '';
+  const nc = d.respostas.filter((r) => r.resposta === 'nao'); if (!nc.length) return '';
+  const lista = nc.filter((r) => d.corrLoja[r.id]);
+  const corpo = lista.map((r) => {
+    const c = d.corrLoja[r.id], st = stCorrLoja(c);
+    const titulo = ehLivre(d.v) ? (r.justificativa || r.pergunta_texto) : r.pergunta_texto;
+    return '<div class="item-card"><div class="rt"><div style="font-weight:700">' + esc(titulo) + '</div><span class="pill ' + st[1] + '">' + st[0] + '</span></div>' +
+      '<div class="obs-vt"><b>' + (c.status === 'nao_possivel' ? 'Não foi possível' : 'O que foi feito') + ':</b> ' + esc(c.comentario || '—') + '</div>' +
+      '<div class="sub-box">' + esc(c.respondido_por || '') + (c.respondido_funcao ? ' · ' + esc(c.respondido_funcao) : '') + ' · ' + dataHora(c.respondido_em) + (c.avaliado_por ? ' — ' + (c.avaliacao === 'aprovado' ? 'aprovado' : 'devolvido') + ' por ' + esc(c.avaliado_por) : '') + (c.avaliacao_obs ? ': ' + esc(c.avaliacao_obs) : '') + '</div>' +
+      (c.fotos_urls && c.fotos_urls.length ? '<div class="fotos-vt">' + c.fotos_urls.map((u) => '<a href="' + u + '" target="_blank"><img src="' + u + '"></a>').join('') + '</div>' : '') +
+      (!c.avaliacao ? '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn-acao mini" onclick="avaliarCorrLoja(\'' + c.id + '\',\'aprovado\')">Aprovar</button><button class="btn-acao secundario mini" onclick="avaliarCorrLoja(\'' + c.id + '\',\'devolvido\')">Devolver</button></div>' : '') + '</div>';
+  }).join('');
+  return '<h3 class="tit-secao">Correção pela loja <span class="sub-box" style="display:inline">· ' + lista.length + ' de ' + nc.length + ' respondidos</span></h3>' + (corpo || '<div class="celula-vazio">A loja ainda não respondeu pelo link.</div>');
+}
+async function avaliarCorrLoja(id, decisao) {
+  let obs = null;
+  if (decisao === 'devolvido') { obs = prompt('Por que está devolvendo? (a loja vai ver)'); if (obs === null) return; }
+  const { error } = await sb.from('vt_correcao_loja').update({ avaliacao: decisao, avaliacao_obs: obs || null, avaliado_por: estado.usuario.nome, avaliado_em: new Date().toISOString() }).eq('id', id);
+  if (error) { toast('Não consegui salvar: ' + error.message, 'erro'); return; }
+  const cv = Object.values(estado.visitaAberta.corrLoja || {}).find((x) => x.id === id);
+  const c = cv && (estado.corrLoja || []).find((x) => x.resposta_id === cv.resposta_id);
+  if (c) c.avaliacao = decisao;
+  toast(decisao === 'aprovado' ? 'Item aprovado.' : 'Item devolvido para a loja.');
+  abrirVisita(estado.visitaAberta.v.id);
+}
 function planoAcao(d) {
   const nc = d.respostas.filter((r) => r.resposta === 'nao');
   const resp = d.v.setor === 'geral' ? 'Gerência' : 'Encarregado · ' + nomeSetor(d.v.setor);
@@ -1310,7 +1386,7 @@ function planoAcao(d) {
   const porId = {}; d.respostas.forEach((r) => { porId[r.id] = r; });
   const rotuloItem = (texto, rid) => (ehLivre(d.v) && porId[rid] && porId[rid].justificativa ? texto + ' — ' + porId[rid].justificativa : texto);
   const linhas = d.itens.length ? d.itens.map((i) => ({ item: rotuloItem(i.pergunta_texto, i.resposta_id), critico: i.critico, st: i.aprovacao === 'aprovado' ? ['Concluído', 'verde'] : i.aprovacao === 'devolvido' ? ['Devolvido', 'vermelho'] : i.status === 'corrigido' ? ['Corrigido · aguardando', 'laranja'] : i.status === 'nao_possivel' ? ['Não foi possível', ''] : ['Pendente', 'vermelho'], quem: i.respondido_por }))
-    : nc.map((r) => ({ item: rotuloItem(r.pergunta_texto, r.id), critico: r.critico, st: ['Pendente', 'vermelho'], quem: null }));
+    : nc.map((r) => { const c = (d.corrLoja || {})[r.id]; return { item: rotuloItem(r.pergunta_texto, r.id), critico: r.critico, st: stCorrLoja(c), quem: c ? c.respondido_por : null }; });
   return { linhas, resp, prazo };
 }
 async function abrirVisita(id) {
@@ -1338,17 +1414,17 @@ async function abrirVisita(id) {
   const delta = d.anterior ? Number(v.aproveitamento) - Number(d.anterior.aproveitamento) : null;
   main.innerHTML =
     '<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap"><button class="btn-acao secundario" onclick="renderizar()">‹ Voltar</button><button class="btn-acao" onclick="baixarPdf()">⬇ Baixar PDF</button>' + (visitasDoDia(v).length > 1 ? '<button class="btn-acao" onclick="baixarPdfCompleto()">🖨 PDF completo do dia (' + visitasDoDia(v).length + ' setores, um por folha)</button>' : '') + '</div>' +
-    cabecalho(nomeSetor(v.setor) + ' · Loja ' + esc(v.unidade || '—'), (numeroDoc(v) ? '<b>Nº ' + numeroDoc(v) + '</b> · ' : '') + 'Técnico veterinário: ' + esc(v.veterinario_nome) + ' · finalizada em ' + dataHora(v.finalizada_em), ' ') +
+    cabecalho(nomeSetor(v.setor) + ' · Loja ' + esc(v.unidade || '—'), (numeroDoc(v) ? '<b>Nº ' + numeroDoc(v) + '</b> · ' : '') + 'Técnico veterinário: ' + esc(v.veterinario_nome) + ' · finalizada em ' + dataHora(v.finalizada_em), ' ') + (d.itens.length ? '' : cartaoLinkLoja(v)) +
     (v.localizacao_lat != null ? '<div class="sub-box" style="margin:-16px 0 16px">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + ' — <a href="https://www.google.com/maps?q=' + v.localizacao_lat + ',' + v.localizacao_lng + '" target="_blank">ver no mapa</a></div>' : '') +
-    (ehLivre(v) ? '<div class="resumo-perdas">' + (semNota(v) ? kpiBox('Modelo', 'Apontamentos livres', null, 'sem nota') : kpiBox('Nota do veterinário', String(v.aproveitamento).replace('.', ','), faixaLivre(Number(v.aproveitamento)).cor, faixaLivre(Number(v.aproveitamento)).texto)) + kpiBox('Apontamentos', v.nao_conformidades || 0, (v.nao_conformidades || 0) ? 'var(--red)' : 'var(--green)') + kpiBox('Correção', statusCorrecao(d.tarefa).txt) + '</div>' + livreHtmlPortal(d) :
+    (ehLivre(v) ? '<div class="resumo-perdas">' + (semNota(v) ? kpiBox('Modelo', 'Apontamentos livres', null, 'sem nota') : kpiBox('Nota do veterinário', String(v.aproveitamento).replace('.', ','), faixaLivre(Number(v.aproveitamento)).cor, faixaLivre(Number(v.aproveitamento)).texto)) + kpiBox('Apontamentos', v.nao_conformidades || 0, (v.nao_conformidades || 0) ? 'var(--red)' : 'var(--green)') + kpiBox('Correção', d.tarefa ? statusCorrecao(d.tarefa).txt : ((resumoCorrLoja(v) || { txt: 'Sem pendência' }).txt)) + '</div>' + livreHtmlPortal(d) :
     '<div class="resumo-perdas">' +
       kpiBox('Aproveitamento', v.aproveitamento + '%', b.cor, b.texto + (delta == null ? ' · primeira visita do setor' : ' · ' + (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(delta).toFixed(1).replace('.', ',') + ' pts vs ' + dataCurta(d.anterior.finalizada_em))) +
       kpiBox('Pontos', v.pontos_realizados + ' / ' + v.pontos_possiveis) +
       kpiBox('Não conformidades', v.nao_conformidades || 0, (v.nao_conformidades || 0) ? 'var(--red)' : 'var(--green)') +
       kpiBox('Críticos reprovados', v.criticos_nao_conformes || 0, (v.criticos_nao_conformes || 0) ? 'var(--red)' : 'var(--green)') +
-      kpiBox('Correção', statusCorrecao(d.tarefa).txt) +
+      kpiBox('Correção', d.tarefa ? statusCorrecao(d.tarefa).txt : ((resumoCorrLoja(v) || { txt: 'Sem pendência' }).txt)) +
     '</div>' + itens) +
-    (v.consideracoes_finais ? '<h3 class="tit-secao">Considerações finais</h3><div class="item-card" style="white-space:pre-wrap">' + esc(v.consideracoes_finais) + '</div>' : '') + plano + acompanhanteHtml(v, false);
+    (v.consideracoes_finais ? '<h3 class="tit-secao">Considerações finais</h3><div class="item-card" style="white-space:pre-wrap">' + esc(v.consideracoes_finais) + '</div>' : '') + plano + respostasLojaHtml(d) + acompanhanteHtml(v, false);
 }
 
 // ---------------------------------------------------------------- PDF (mesmo visual dos PDFs do app)
@@ -1366,7 +1442,7 @@ function folhaPdf(d) {
     const crit = p.critico ? ' <span class="critico">CRÍTICO</span>' : '';
     if (!r) return cab + '<div class="item apagado"><div class="topo"><div class="texto">' + (i + 1) + '. ' + esc(p.texto) + crit + '</div><span class="badge b-na">Não avaliada</span></div></div>';
     const fotos = (r.fotos_urls && r.fotos_urls.length) ? r.fotos_urls : (r.foto_url ? [r.foto_url] : []);
-    return cab + '<div class="item ' + (r.resposta === 'nao' ? 'ruim' : '') + '"><div class="topo"><div class="texto">' + (i + 1) + '. ' + esc(p.texto) + crit + '</div>' + selo(r.resposta) + '</div>' + (p.base_manual ? '<div class="base">Base: ' + esc(p.base_manual) + '</div>' : '') + (r.justificativa ? '<div class="det"><b>Observação:</b> ' + esc(r.justificativa) + '</div>' : '') + (fotos.length ? '<div class="fotos">' + fotos.map((u) => '<img class="foto" src="' + u + '">').join('') + '</div>' : '') + (r.resposta === 'nao' ? ESPACO_CORRECAO : '') + '</div>';
+    return cab + '<div class="item ' + (r.resposta === 'nao' ? 'ruim' : '') + '"><div class="topo"><div class="texto">' + (i + 1) + '. ' + esc(p.texto) + crit + '</div>' + selo(r.resposta) + '</div>' + (p.base_manual ? '<div class="base">Base: ' + esc(p.base_manual) + '</div>' : '') + (r.justificativa ? '<div class="det"><b>Observação:</b> ' + esc(r.justificativa) + '</div>' : '') + (fotos.length ? '<div class="fotos">' + fotos.map((u) => '<img class="foto" src="' + u + '">').join('') + '</div>' : '') + (r.resposta === 'nao' ? (d.itens.length ? '' : respLojaPdf(d, r)) : '') + '</div>';
   }).join('');
   const pa = planoAcao(d);
   const cls = { verde: 'b-sim', laranja: 'b-azul', vermelho: 'b-nao', '': 'b-na' };
@@ -1382,7 +1458,7 @@ function folhaPdf(d) {
     : kpi('Aproveitamento', pct + '%<span class="classif" style="color:' + b.cor + ';background:#F3F5F8">' + b.texto + '</span>', b.cor, comp) + kpi('Pontos', v.pontos_realizados + ' / ' + v.pontos_possiveis) + kpi('Não conformidades', nc, nc ? '#B42318' : '#15803D') + kpi('Críticos reprovados', cr, cr ? '#B42318' : '#15803D');
   const corpo = (v.localizacao_lat != null ? '<div class="info">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + '</div>' : '') +
     '<div class="kpis">' + kpisHtml + '</div>' +
-    (ehLivre(v) ? livreHtmlPdf(d) : itens + plano) + (v.consideracoes_finais ? '<div class="lbl">Considerações finais</div><div class="caixa">' + esc(v.consideracoes_finais) + '</div>' : '') + acompanhanteHtml(v, true) + devolutivaHtml(nc) + '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div>';
+    (ehLivre(v) ? livreHtmlPdf(d) : itens + plano) + (v.consideracoes_finais ? '<div class="lbl">Considerações finais</div><div class="caixa">' + esc(v.consideracoes_finais) + '</div>' : '') + acompanhanteHtml(v, true) + devolutivaHtml(nc, v) + '<div class="base" style="margin-top:14px">Base: Manual de Boas Práticas e POPs (rev. 12.26)</div>';
   return '<div class="hdr"><div style="display:flex;align-items:center;gap:14px">' + LOGO_PDF + '<div><div class="t">ULVA · Visita técnica</div><h1>' + esc(nomeSetor(v.setor)) + '</h1></div></div><div class="d">' + (numeroDoc(v) ? '<span class="ndoc">Nº ' + numeroDoc(v) + '</span><br>' : '') + 'Loja ' + esc(v.unidade || '—') + '<br>Téc. veterinário: ' + esc(v.veterinario_nome) + '<br>Finalizada em ' + dataHora(v.finalizada_em) + '</div></div>' +
     '<div class="wrap">' + corpo + '</div>' + rodapePdf();
 }
@@ -1455,7 +1531,7 @@ async function baixarPdfCompleto() {
   abrirJanelaPdf('Visita técnica — Loja ' + (v.unidade || '') + ' — ' + new Date(v.finalizada_em).toLocaleDateString('pt-BR'), folhas, janela);
 }
 const LOGO_PDF = '<svg width="38" height="38" viewBox="0 0 160 160"><rect width="160" height="160" rx="32" fill="#16294A"/><path d="M42 36 V84 A38 38 0 0 0 118 84 V36" fill="none" stroke="#F4F5F7" stroke-width="20" stroke-linecap="round"/><circle cx="80" cy="74" r="15" fill="#2F7BFF"/></svg>';
-const CSS_PDF = ".corr{margin-top:8px;border:1px dashed #B9C0CE;border-radius:8px;padding:6px 10px;page-break-inside:avoid;break-inside:avoid}.corr-l{border-bottom:1px solid #C9CFDB;min-height:20px;font-size:10.5px;color:#3B4A6B;padding-top:4px}.corr-r{display:flex;justify-content:space-between;font-size:10.5px;color:#3B4A6B;margin-top:8px}.dev{margin-top:16px;border:1.5px solid #0E1B2C;border-radius:10px;padding:10px 14px;page-break-inside:avoid;break-inside:avoid}.dev-p{font-size:11px;color:#0E1B2C;margin:4px 0 8px}.dev-g{display:flex;gap:14px}.dev-c{flex:1}.dev-t{font-size:10.5px;font-weight:800;color:#0E1B2C;margin-bottom:2px}.dev-l{border-bottom:1px solid #8A93A5;min-height:24px;font-size:10px;color:#5B6280;padding-top:8px}" + ".assin{margin-top:16px;border:1px solid #E3E7EE;border-radius:10px;padding:10px 14px;page-break-inside:avoid;break-inside:avoid}.assin-tit{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#8A93A5;font-weight:700}.assin-linha{border-bottom:1px solid #8A93A5;min-height:60px;display:flex;align-items:flex-end;justify-content:center}.assin-nome{text-align:center;font-size:11.5px;font-weight:700;color:#0E1B2C;margin-top:4px}.assin-sem{font-size:11.5px;color:#5B6280;margin-top:4px}" + "@page{size:A4;margin:10mm 0 12mm}@page:first{margin-top:0}*{box-sizing:border-box}html,body{margin:0}body{font-family:Inter,Roboto,'Helvetica Neue',Arial,sans-serif;color:#0B1220;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+const CSS_PDF = ".dev-qr{display:flex;gap:12px;align-items:center;font-size:10.5px;line-height:1.45;color:#0E1B2C;border:1px dashed #B9C0CE;border-radius:8px;padding:8px 10px;margin-bottom:8px}.dev-qr img{flex:none}.corr{margin-top:8px;border:1px dashed #B9C0CE;border-radius:8px;padding:6px 10px;page-break-inside:avoid;break-inside:avoid}.corr-l{border-bottom:1px solid #C9CFDB;min-height:20px;font-size:10.5px;color:#3B4A6B;padding-top:4px}.corr-r{display:flex;justify-content:space-between;font-size:10.5px;color:#3B4A6B;margin-top:8px}.dev{margin-top:16px;border:1.5px solid #0E1B2C;border-radius:10px;padding:10px 14px;page-break-inside:avoid;break-inside:avoid}.dev-p{font-size:11px;color:#0E1B2C;margin:4px 0 8px}.dev-g{display:flex;gap:14px}.dev-c{flex:1}.dev-t{font-size:10.5px;font-weight:800;color:#0E1B2C;margin-bottom:2px}.dev-l{border-bottom:1px solid #8A93A5;min-height:24px;font-size:10px;color:#5B6280;padding-top:8px}" + ".assin{margin-top:16px;border:1px solid #E3E7EE;border-radius:10px;padding:10px 14px;page-break-inside:avoid;break-inside:avoid}.assin-tit{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#8A93A5;font-weight:700}.assin-linha{border-bottom:1px solid #8A93A5;min-height:60px;display:flex;align-items:flex-end;justify-content:center}.assin-nome{text-align:center;font-size:11.5px;font-weight:700;color:#0E1B2C;margin-top:4px}.assin-sem{font-size:11.5px;color:#5B6280;margin-top:4px}" + "@page{size:A4;margin:10mm 0 12mm}@page:first{margin-top:0}*{box-sizing:border-box}html,body{margin:0}body{font-family:Inter,Roboto,'Helvetica Neue',Arial,sans-serif;color:#0B1220;font-size:11.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
   ".hdr{background:#0E1B2C;color:#fff;padding:18px 26px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}.hdr .t{font-size:10.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:#8FA3C4}.hdr h1{font-size:21px;margin:3px 0 0;font-weight:700}.hdr .d{text-align:right;font-size:11px;color:#C9D3E5;line-height:1.5}" +
   ".ndoc{display:inline-block;margin-bottom:3px;padding:2px 8px;border:1px solid #2C4468;border-radius:4px;color:#fff;font-weight:600;letter-spacing:.06em;font-size:10.5px}.wrap{padding:18px 26px 8px}" +
   ".lbl{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#6B7486;font-weight:700;margin:18px 0 8px;display:flex;align-items:center;gap:8px;page-break-after:avoid}.lbl:after{content:'';flex:1;height:1px;background:#E3E7EE}.lbl .q{letter-spacing:.02em;text-transform:none;font-weight:600;color:#8A93A5}" +
@@ -1470,17 +1546,17 @@ const CSS_PDF = ".corr{margin-top:8px;border:1px dashed #B9C0CE;border-radius:8p
 // ---------------------------------------------------------------- correções
 function paginaCorrecoes() {
   const f = estado.filtros.correcao || 'abertas';
-  const vs = visitasFiltradas().filter((v) => v.tarefa_id);
-  const linhas = vs.map((v) => ({ v, t: estado.tarefas.find((x) => x.id === v.tarefa_id) })).filter(({ t }) => {
-    const ok = t && (t.correcao_status === 'aprovada' || t.concluida);
+  const vs = visitasFiltradas().filter((v) => v.tarefa_id || (v.nao_conformidades || 0) > 0);
+  const linhas = vs.map((v) => ({ v, t: estado.tarefas.find((x) => x.id === v.tarefa_id), rl: v.tarefa_id ? null : resumoCorrLoja(v) })).filter(({ v, t, rl }) => {
+    const ok = v.tarefa_id ? (t && (t.correcao_status === 'aprovada' || t.concluida)) : (rl && rl.ok);
     return f === 'todas' || (f === 'abertas' ? !ok : ok);
   });
   const chips = [['abertas', 'Em aberto'], ['concluidas', 'Concluídas'], ['todas', 'Todas']].map(([k, t]) => '<button class="chip ' + (f === k ? 'ativo' : '') + '" onclick="estado.filtros.correcao=\'' + k + '\';renderizar()">' + t + '</button>').join('');
   document.getElementById('conteudo-principal').innerHTML =
     cabecalho('Correções', 'O que as lojas fizeram com as não conformidades das visitas') + filtrosHtml(true) + '<div class="chips-wrap">' + chips + '</div>' +
     '<div class="tabela-wrap"><table><thead><tr><th>Nº</th><th>Loja</th><th>Setor</th><th>Visita</th><th>NC</th><th>Prazo</th><th>Status</th><th>Corrigido por</th></tr></thead><tbody>' +
-    (linhas.map(({ v, t }) => { const st = statusCorrecao(t); const atras = t && t.prazo && !(t.correcao_status === 'aprovada' || t.concluida) && t.prazo < new Date().toISOString().slice(0, 10); return '<tr class="linha-clicavel" onclick="abrirVisita(\'' + v.id + '\')"><td class="mono">' + esc(numeroDoc(v) || '—') + '</td><td style="font-weight:800">' + esc(v.unidade || '—') + '</td><td>' + esc(nomeSetor(v.setor)) + '</td><td>' + dataCurta(v.finalizada_em) + '</td><td>' + (v.nao_conformidades || 0) + '</td><td style="' + (atras ? 'color:var(--red);font-weight:800' : '') + '">' + (t && t.prazo ? dataCurta(t.prazo) + (atras ? ' · atrasada' : '') : '—') + '</td><td><span class="pill ' + st.cls + '">' + st.txt + '</span></td><td>' + esc((t && (t.correcao_enviada_por || t.concluida_por_nome)) || '—') + '</td></tr>'; }).join('') || '<tr><td colspan="8" class="celula-vazio">Nada aqui.</td></tr>') +
-    '</tbody></table></div><div class="sub-box" style="margin-top:10px">Só visitas na loja 327 geram correção para a equipe da loja.</div>';
+    (linhas.map(({ v, t, rl }) => { const st = rl ? { txt: rl.txt, cls: rl.cls } : statusCorrecao(t); const atras = t && t.prazo && !(t.correcao_status === 'aprovada' || t.concluida) && t.prazo < new Date().toISOString().slice(0, 10); return '<tr class="linha-clicavel" onclick="abrirVisita(\'' + v.id + '\')"><td class="mono">' + esc(numeroDoc(v) || '—') + '</td><td style="font-weight:800">' + esc(v.unidade || '—') + '</td><td>' + esc(nomeSetor(v.setor)) + '</td><td>' + dataCurta(v.finalizada_em) + '</td><td>' + (v.nao_conformidades || 0) + '</td><td style="' + (atras ? 'color:var(--red);font-weight:800' : '') + '">' + (t && t.prazo ? dataCurta(t.prazo) + (atras ? ' · atrasada' : '') : '—') + '</td><td><span class="pill ' + st.cls + '">' + st.txt + '</span></td><td>' + esc((rl && rl.quem) || (t && (t.correcao_enviada_por || t.concluida_por_nome)) || '—') + '</td></tr>'; }).join('') || '<tr><td colspan="8" class="celula-vazio">Nada aqui.</td></tr>') +
+    '</tbody></table></div><div class="sub-box" style="margin-top:10px">Na loja 327 a correção vem pelo app. Nas outras lojas, pelo link da visita (QR code no PDF), sem app e sem login.</div>';
 }
 
 // ---------------------------------------------------------------- perguntas
