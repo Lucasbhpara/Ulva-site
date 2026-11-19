@@ -1300,7 +1300,7 @@ function respLojaPdf(d, r) {
 }
 function devolutivaHtml(qtd, v) {
   const campo = (t) => '<div class="dev-c"><div class="dev-t">' + t + '</div><div class="dev-l">Nome:</div><div class="dev-l">Assinatura:</div><div class="dev-l">Data: ____/____/______</div></div>';
-  const qr = qtd && v && !v.tarefa_id && linkCorrecao(v) ? '<div class="dev-qr"><img src="' + qrCorrecao(v, 240) + '" width="84" height="84"><div><b>Prefere responder pelo celular?</b><br>Aponte a câmera para o QR code, digite o código de acesso <b style="font-size:13px;letter-spacing:.15em">' + esc(v.pin_loja || '') + '</b>, diga o que foi feito em cada item e mande foto. Não precisa de app.<br><span style="color:#5B6280;word-break:break-all">' + linkCorrecao(v) + '</span></div></div>' : '';
+  const qr = qtd && v && linkCorrecao(v) ? '<div class="dev-qr"><img src="' + qrCorrecao(v, 240) + '" width="84" height="84"><div><b>Prefere responder pelo celular?</b><br>Aponte a câmera para o QR code, digite o código de acesso <b style="font-size:13px;letter-spacing:.15em">' + esc(v.pin_loja || '') + '</b>, diga o que foi feito em cada item e mande foto. Não precisa de app.<br><span style="color:#5B6280;word-break:break-all">' + linkCorrecao(v) + '</span></div></div>' : '';
   return '<div class="dev"><div class="assin-tit">Devolutiva da loja</div><div class="dev-p">' + (qtd ? qtd + (qtd === 1 ? ' item para corrigir. ' : ' itens para corrigir. ') : '') + 'Prazo para correção: ____/____/______ &nbsp;·&nbsp; Devolver esta folha assinada ao gerente.</div>' + qr + '<div class="dev-g">' + campo('Encarregado do setor — ciente e corrigido') + campo('Gerente — conferido') + '</div></div>';
 }
 function livreHtmlPdf(d) {
@@ -1356,7 +1356,6 @@ function copiarLinkLoja() {
 }
 // Respostas que a loja mandou pelo link, com aprovar/devolver.
 function respostasLojaHtml(d) {
-  if (d.itens.length) return '';
   const nc = d.respostas.filter((r) => r.resposta === 'nao'); if (!nc.length) return '';
   const lista = nc.filter((r) => d.corrLoja[r.id]);
   const corpo = lista.map((r) => {
@@ -1368,6 +1367,7 @@ function respostasLojaHtml(d) {
       (c.fotos_urls && c.fotos_urls.length ? '<div class="fotos-vt">' + c.fotos_urls.map((u) => '<a href="' + u + '" target="_blank"><img src="' + u + '"></a>').join('') + '</div>' : '') +
       (!c.avaliacao ? '<div style="display:flex;gap:8px;margin-top:8px"><button class="btn-acao mini" onclick="avaliarCorrLoja(\'' + c.id + '\',\'aprovado\')">Aprovar</button><button class="btn-acao secundario mini" onclick="avaliarCorrLoja(\'' + c.id + '\',\'devolvido\')">Devolver</button></div>' : '') + '</div>';
   }).join('');
+  if (d.itens.length && !lista.length) return '';
   return '<h3 class="tit-secao">Correção pela loja <span class="sub-box" style="display:inline">· ' + lista.length + ' de ' + nc.length + ' respondidos</span></h3>' + (corpo || '<div class="celula-vazio">A loja ainda não respondeu pelo link.</div>');
 }
 async function avaliarCorrLoja(id, decisao) {
@@ -1416,7 +1416,7 @@ async function abrirVisita(id) {
   const delta = d.anterior ? Number(v.aproveitamento) - Number(d.anterior.aproveitamento) : null;
   main.innerHTML =
     '<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap"><button class="btn-acao secundario" onclick="renderizar()">‹ Voltar</button><button class="btn-acao" onclick="baixarPdf()">⬇ Baixar PDF</button>' + (visitasDoDia(v).length > 1 ? '<button class="btn-acao" onclick="baixarPdfCompleto()">🖨 PDF completo do dia (' + visitasDoDia(v).length + ' setores, um por folha)</button>' : '') + '</div>' +
-    cabecalho(nomeSetor(v.setor) + ' · Loja ' + esc(v.unidade || '—'), (numeroDoc(v) ? '<b>Nº ' + numeroDoc(v) + '</b> · ' : '') + 'Técnico veterinário: ' + esc(v.veterinario_nome) + ' · finalizada em ' + dataHora(v.finalizada_em), ' ') + (d.itens.length ? '' : cartaoLinkLoja(v)) +
+    cabecalho(nomeSetor(v.setor) + ' · Loja ' + esc(v.unidade || '—'), (numeroDoc(v) ? '<b>Nº ' + numeroDoc(v) + '</b> · ' : '') + 'Técnico veterinário: ' + esc(v.veterinario_nome) + ' · finalizada em ' + dataHora(v.finalizada_em), ' ') + cartaoLinkLoja(v) +
     (v.localizacao_lat != null ? '<div class="sub-box" style="margin:-16px 0 16px">📍 ' + esc(v.localizacao_endereco || (v.localizacao_lat.toFixed(5) + ', ' + v.localizacao_lng.toFixed(5))) + ' — <a href="https://www.google.com/maps?q=' + v.localizacao_lat + ',' + v.localizacao_lng + '" target="_blank">ver no mapa</a></div>' : '') +
     (ehLivre(v) ? '<div class="resumo-perdas">' + (semNota(v) ? kpiBox('Modelo', 'Apontamentos livres', null, 'sem nota') : kpiBox('Nota do veterinário', String(v.aproveitamento).replace('.', ','), faixaLivre(Number(v.aproveitamento)).cor, faixaLivre(Number(v.aproveitamento)).texto)) + kpiBox('Apontamentos', v.nao_conformidades || 0, (v.nao_conformidades || 0) ? 'var(--red)' : 'var(--green)') + kpiBox('Correção', d.tarefa ? statusCorrecao(d.tarefa).txt : ((resumoCorrLoja(v) || { txt: 'Sem pendência' }).txt)) + '</div>' + livreHtmlPortal(d) :
     '<div class="resumo-perdas">' +
@@ -1444,7 +1444,7 @@ function folhaPdf(d) {
     const crit = p.critico ? ' <span class="critico">CRÍTICO</span>' : '';
     if (!r) return cab + '<div class="item apagado"><div class="topo"><div class="texto">' + (i + 1) + '. ' + esc(p.texto) + crit + '</div><span class="badge b-na">Não avaliada</span></div></div>';
     const fotos = (r.fotos_urls && r.fotos_urls.length) ? r.fotos_urls : (r.foto_url ? [r.foto_url] : []);
-    return cab + '<div class="item ' + (r.resposta === 'nao' ? 'ruim' : '') + '"><div class="topo"><div class="texto">' + (i + 1) + '. ' + esc(p.texto) + crit + '</div>' + selo(r.resposta) + '</div>' + (p.base_manual ? '<div class="base">Base: ' + esc(p.base_manual) + '</div>' : '') + (r.justificativa ? '<div class="det"><b>Observação:</b> ' + esc(r.justificativa) + '</div>' : '') + (fotos.length ? '<div class="fotos">' + fotos.map((u) => '<img class="foto" src="' + u + '">').join('') + '</div>' : '') + (r.resposta === 'nao' ? (d.itens.length ? '' : respLojaPdf(d, r)) : '') + '</div>';
+    return cab + '<div class="item ' + (r.resposta === 'nao' ? 'ruim' : '') + '"><div class="topo"><div class="texto">' + (i + 1) + '. ' + esc(p.texto) + crit + '</div>' + selo(r.resposta) + '</div>' + (p.base_manual ? '<div class="base">Base: ' + esc(p.base_manual) + '</div>' : '') + (r.justificativa ? '<div class="det"><b>Observação:</b> ' + esc(r.justificativa) + '</div>' : '') + (fotos.length ? '<div class="fotos">' + fotos.map((u) => '<img class="foto" src="' + u + '">').join('') + '</div>' : '') + (r.resposta === 'nao' ? respLojaPdf(d, r) : '') + '</div>';
   }).join('');
   const pa = planoAcao(d);
   const cls = { verde: 'b-sim', laranja: 'b-azul', vermelho: 'b-nao', '': 'b-na' };
