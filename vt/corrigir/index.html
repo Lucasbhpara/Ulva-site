@@ -99,11 +99,14 @@ function salvarQuem() { try { localStorage.setItem('ulva-corr-quem', JSON.string
 async function iniciar() {
   const token = new URLSearchParams(location.search).get('t') || '';
   if (!/^[a-f0-9]{20,}$/i.test(token)) return erro('Link incompleto', 'Peça ao veterinário ou ao gerente o link completo da correção.');
+  st.token = token;
+  let pin = ''; try { pin = localStorage.getItem('ulva-corr-pin:' + token) || ''; } catch (e) {}
+  if (!pin) return pedirCodigo();
   const { data: v, error } = await sb.from('visitas_tecnicas')
     .select('id, numero, unidade, setor, modelo, status, veterinario_nome, iniciada_em, finalizada_em')
-    .eq('token_loja', token).maybeSingle();
+    .eq('token_loja', token).eq('pin_loja', pin).maybeSingle();
   if (error) return erro('Sem conexão', 'Não consegui abrir a correção. Confira a internet e tente de novo.');
-  if (!v) return erro('Link não encontrado', 'Este link não é de nenhuma visita. Peça o link de novo ao veterinário ou ao gerente.');
+  if (!v) { try { localStorage.removeItem('ulva-corr-pin:' + token); } catch (e) {} return pedirCodigo('Código errado. Confira na folha impressa ou peça ao gerente.'); }
   st.visita = v;
   document.getElementById('titulo').textContent = 'Correção · ' + (SETORES[v.setor] || v.setor);
   document.getElementById('subtitulo').innerHTML = 'Loja ' + esc(v.unidade || '—') + ' · ' + esc(numeroDoc(v)) + '<br>Visita de ' + dataBr(v.finalizada_em || v.iniciada_em) + ' · Téc. ' + esc(v.veterinario_nome || '');
@@ -122,6 +125,20 @@ async function iniciar() {
   desenhar();
 }
 
+// Código de acesso de 4 números: vem impresso na folha do setor e o gerente
+// ou o veterinário passa para a loja. Fica guardado neste celular.
+function pedirCodigo(aviso) {
+  document.getElementById('titulo').textContent = 'Correção da visita';
+  document.getElementById('subtitulo').textContent = 'Digite o código de acesso para continuar.';
+  app.innerHTML = '<div class="card"><div class="lbl">Código de acesso</div><input type="text" id="pin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••" style="font-size:28px;letter-spacing:.4em;text-align:center">' +
+    (aviso ? '<div class="item-obs" style="color:var(--red);margin-top:8px">' + esc(aviso) + '</div>' : '') +
+    '<div class="item-obs" style="margin-top:10px">O código está impresso na folha do setor, ao lado do QR code. Se não tiver, peça ao gerente ou ao veterinário.</div>' +
+    '<button class="btn" id="btn-pin">Entrar</button></div>';
+  const i = document.getElementById('pin'), btn = document.getElementById('btn-pin');
+  const ir = () => { const v = i.value.replace(/\D/g, ''); if (v.length !== 4) { i.focus(); return; } try { localStorage.setItem('ulva-corr-pin:' + st.token, v); } catch (e) {} app.innerHTML = '<div class="aviso">Abrindo…</div>'; iniciar(); };
+  btn.onclick = ir; i.addEventListener('keydown', (e) => { if (e.key === 'Enter') ir(); }); i.addEventListener('input', () => { if (i.value.replace(/\D/g, '').length === 4) ir(); });
+  setTimeout(() => i.focus(), 100);
+}
 function erro(t, msg) { document.getElementById('titulo').textContent = 'Correção da visita'; app.innerHTML = '<div class="aviso"><h2>' + esc(t) + '</h2><p>' + esc(msg) + '</p></div>'; }
 
 function textoItem(r) {
