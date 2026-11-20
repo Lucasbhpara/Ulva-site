@@ -2018,6 +2018,10 @@ function fecharModal() { const el = document.getElementById('overlay-modal'); if
 // AUDIT — função com Veterinário, Responsável, Diretoria, Coordenação, Sanitário,
 // Qualidade ou Supervisor, ou administradores.
 const FUNCOES_AUDIT = ['Técnico Veterinário', 'Responsável · Visita Técnica', 'Diretoria'];
+// Marca de "só AUDIT": a pessoa entra no app e no portal do AUDIT, mas não no
+// app nem no portal do ULVA (o ULVA recusa o login de quem tem essa marca).
+const MARCA_SOMENTE_AUDIT = 'ulva:sem-acesso';
+const somenteAudit = (c) => (c.ferramentas_bloqueadas || []).includes(MARCA_SOMENTE_AUDIT);
 async function carregarEquipe() {
   const { data, error } = await sb.from('colaboradores').select('*').order('nome');
   if (error) throw error;
@@ -2048,7 +2052,7 @@ async function paginaEquipe() {
     return '<tr class="linha-clicavel" onclick="abrirPessoa(\'' + esc(c.matricula) + '\')">' +
       '<td><div style="display:flex;align-items:center;gap:10px"><div class="avatar-box" style="width:32px;height:32px;font-size:11px">' + esc(iniciais(c.nome)) + '</div><div><div style="font-weight:800">' + esc(c.nome) + (c.is_admin ? '<span class="pill admin">admin</span>' : '') + '</div><div class="sub-box">' + esc(c.funcao) + '</div></div></div></td>' +
       '<td class="mono">' + esc(c.matricula) + '</td>' +
-      '<td><span class="pill ' + (perf === 'Veterinário' ? 'verde' : '') + '">' + perf + '</span></td>' +
+      '<td><span class="pill ' + (perf === 'Veterinário' ? 'verde' : '') + '">' + perf + '</span>' + (somenteAudit(c) ? '<div class="sub-box" style="margin-top:4px">só AUDIT</div>' : '<div class="sub-box" style="margin-top:4px">AUDIT + ULVA</div>') + '</td>' +
       '<td>' + (vet ? vet.rota.length : '—') + '</td>' +
       '<td>' + vs.length + '</td>' +
       '<td>' + (p ? (vivo ? '<span class="pill verde">no app</span> ' : '') + haQuanto(p.registrado_em) + (p.unidade ? ' · loja ' + esc(p.unidade) : '') : '—') + '</td>' +
@@ -2067,7 +2071,7 @@ async function paginaEquipe() {
       (linhas || '<tr><td colspan="7" class="celula-vazio">Ninguém cadastrado ainda.</td></tr>') + '</tbody></table></div>' +
     (semCadastro.length ? '<h3 class="tit-secao">Na planilha de rotas, sem cadastro</h3><div class="item-card"><div class="sub-box" style="margin-bottom:10px">Esses veterinários têm rota, mas ainda não conseguem entrar no app nem no portal.</div><div class="chips-wrap" style="margin:0">' +
       semCadastro.map((x) => '<button class="chip" onclick="abrirModalNovoColaborador(\'' + esc(x.nome.split('/')[0].replace(/\(.*\)/, '').trim()).replace(/'/g, '&#39;') + '\')">+ ' + esc(x.nome) + '</button>').join('') + '</div></div>' : '') +
-    '<div class="sub-box" style="margin-top:12px">É o mesmo cadastro do ULVA: a senha do primeiro acesso no app é a própria matrícula. A função define o que a pessoa vê — Veterinário vê as visitas dele; Responsável e Diretoria veem tudo.</div>';
+    '<div class="sub-box" style="margin-top:12px">Quem você cadastra aqui entra só no AUDIT, a não ser que marque "Também pode entrar no ULVA". A senha do primeiro acesso no app é a própria matrícula. A função define o que a pessoa vê — Veterinário vê as visitas dele; Responsável e Diretoria veem tudo.</div>';
 }
 function opcoesFuncao(atual) {
   const ops = FUNCOES_AUDIT.slice(); if (atual && !ops.includes(atual)) ops.unshift(atual);
@@ -2079,7 +2083,8 @@ function abrirModalNovoColaborador(nome) {
     '<div class="form-linha"><label class="campo-label">Matrícula</label><input class="campo-input" id="nc-matricula" style="margin-bottom:0" /></div>' +
     '<div class="form-linha"><label class="campo-label">Função</label><select class="campo-input" id="nc-funcao" style="margin-bottom:0">' + opcoesFuncao('Técnico Veterinário') + '</select></div>' +
     '<label class="form-check"><input type="checkbox" id="nc-admin" /><span class="txt">É administrador</span></label>' +
-    '<div class="celula-vazio" style="padding:0;font-size:11.5px;text-align:left">A senha do primeiro acesso no app é a própria matrícula.</div>',
+    '<label class="form-check"><input type="checkbox" id="nc-ulva" /><span class="txt">Também pode entrar no ULVA</span></label>' +
+    '<div class="celula-vazio" style="padding:0;font-size:11.5px;text-align:left">Sem essa marcação, a pessoa entra só no AUDIT (app e portal). A senha do primeiro acesso no app é a própria matrícula.</div>',
     'Adicionar', salvarNovoColaborador);
   document.getElementById(nome ? 'nc-matricula' : 'nc-nome').focus();
 }
@@ -2088,9 +2093,10 @@ async function salvarNovoColaborador() {
   const matricula = document.getElementById('nc-matricula').value.trim();
   const funcao = document.getElementById('nc-funcao').value;
   const isAdmin = document.getElementById('nc-admin').checked;
+  const ulva = document.getElementById('nc-ulva').checked;
   if (!nome || !matricula || !funcao) { toast('Preenche nome, matrícula e função.', 'erro'); return; }
   try {
-    const { error } = await sb.from('colaboradores').insert({ nome, matricula, funcao, setor: 'prevencao', is_admin: isAdmin, senha_atual: matricula, senha_definida: false });
+    const { error } = await sb.from('colaboradores').insert({ nome, matricula, funcao, setor: 'prevencao', is_admin: isAdmin, senha_atual: matricula, senha_definida: false, ferramentas_bloqueadas: ulva ? [] : [MARCA_SOMENTE_AUDIT] });
     if (error) throw error;
     fecharModal(); toast('Colaborador adicionado.', 'sucesso'); paginaEquipe();
   } catch (e) { toast(/duplicate|unique/i.test(e.message) ? 'Já existe alguém com essa matrícula.' : 'Não consegui salvar: ' + e.message, 'erro'); }
@@ -2103,6 +2109,7 @@ function abrirModalEditarColaborador(id) {
     '<div class="form-linha"><label class="campo-label">Matrícula</label><input class="campo-input" id="ec-matricula" value="' + esc(c.matricula) + '" style="margin-bottom:0" /></div>' +
     '<div class="form-linha"><label class="campo-label">Função</label><select class="campo-input" id="ec-funcao" style="margin-bottom:0">' + opcoesFuncao(c.funcao) + '</select></div>' +
     '<label class="form-check"><input type="checkbox" id="ec-admin"' + (c.is_admin ? ' checked' : '') + ' /><span class="txt">É administrador</span></label>' +
+    '<label class="form-check"><input type="checkbox" id="ec-ulva"' + (somenteAudit(c) ? '' : ' checked') + ' /><span class="txt">Também pode entrar no ULVA</span></label>' +
     '<div class="form-linha" style="margin-top:16px;"><label class="campo-label">Ferramentas liberadas no portal</label>' +
       '<div class="celula-vazio" style="padding:8px 0; font-size:11.5px; text-align:left">Desmarque o que essa pessoa não deve ver. Não afeta administradores — eles sempre veem tudo.</div>' +
       FERRAMENTAS_AUDIT.map((f) => '<label class="form-check" style="margin-bottom:10px"><input type="checkbox" id="ec-ferr-' + f.chave + '"' + (bloq.includes('audit:' + f.chave) ? '' : ' checked') + ' /><span class="txt">' + f.nome + '</span></label>').join('') +
@@ -2117,8 +2124,9 @@ async function salvarEdicaoColaborador(id) {
   const isAdmin = document.getElementById('ec-admin').checked;
   if (!nome || !matricula || !funcao) { toast('Preenche nome, matrícula e função.', 'erro'); return; }
   // mantém as ferramentas do ULVA como estão; troca só as do AUDIT
-  const outras = (c.ferramentas_bloqueadas || []).filter((x) => !String(x).startsWith('audit:'));
+  const outras = (c.ferramentas_bloqueadas || []).filter((x) => !String(x).startsWith('audit:') && x !== MARCA_SOMENTE_AUDIT);
   const audit = FERRAMENTAS_AUDIT.filter((f) => !document.getElementById('ec-ferr-' + f.chave).checked).map((f) => 'audit:' + f.chave);
+  if (!document.getElementById('ec-ulva').checked) audit.push(MARCA_SOMENTE_AUDIT);
   try {
     const { error } = await sb.from('colaboradores').update({ nome, matricula, funcao, is_admin: isAdmin, ferramentas_bloqueadas: outras.concat(audit) }).eq('id', id);
     if (error) throw error;
@@ -2128,7 +2136,7 @@ async function salvarEdicaoColaborador(id) {
 async function removerColaborador(id) {
   const c = (estado.equipe || []).find((x) => x.id === id); if (!c) return;
   if (String(c.matricula) === String(estado.usuario.matricula)) { toast('Você não pode remover o seu próprio cadastro.', 'erro'); return; }
-  if (!confirm('Remover "' + c.nome + '"?\n\nEle deixa de entrar no app e no portal (no ULVA também). As visitas que ele fez continuam no histórico.')) return;
+  if (!confirm('Remover "' + c.nome + '"?\n\nEle deixa de entrar no AUDIT (e no ULVA, se tinha acesso). As visitas que ele fez continuam no histórico.')) return;
   try {
     const { error } = await sb.from('colaboradores').delete().eq('id', id);
     if (error) throw error;
