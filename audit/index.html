@@ -1043,6 +1043,8 @@ const ehResp = () => estado.perfil === 'responsavel';
 // ---------------------------------------------------------------- login
 function perfilDe(c) {
   const f = sem(c.funcao);
+  // "Responsável técnico" é o veterinário (igual no app AUDIT)
+  if (!c.is_admin && /respons\w* tecnic/.test(f)) return 'veterinario';
   if (c.is_admin || /diretor|respons|coorden|sanitar|qualidade|supervisor/.test(f)) return 'responsavel';
   if (/veterin/.test(f)) return 'veterinario';
   return null;
@@ -2015,7 +2017,7 @@ function fecharModal() { const el = document.getElementById('overlay-modal'); if
 // Mesmo cadastro do ULVA (tabela colaboradores): aqui aparecem só as pessoas do
 // AUDIT — função com Veterinário, Responsável, Diretoria, Coordenação, Sanitário,
 // Qualidade ou Supervisor, ou administradores.
-const FUNCOES_AUDIT = ['Técnico Veterinário', 'Responsável · Visita Técnica', 'Diretoria'];
+const FUNCOES_AUDIT = ['Responsável Técnico', 'Técnico Veterinário', 'Responsável · Visita Técnica', 'Diretoria'];
 // Marca de "só AUDIT": a pessoa entra no app e no portal do AUDIT, mas não no
 // app nem no portal do ULVA (o ULVA recusa o login de quem tem essa marca).
 const MARCA_SOMENTE_AUDIT = 'ulva:sem-acesso';
@@ -2079,7 +2081,7 @@ function abrirModalNovoColaborador(nome) {
   abrirModal('Adicionar colaborador',
     '<div class="form-linha"><label class="campo-label">Nome</label><input class="campo-input" id="nc-nome" value="' + esc(nome || '') + '" style="margin-bottom:0" /></div>' +
     '<div class="form-linha"><label class="campo-label">Matrícula</label><input class="campo-input" id="nc-matricula" style="margin-bottom:0" /></div>' +
-    '<div class="form-linha"><label class="campo-label">Função</label><select class="campo-input" id="nc-funcao" style="margin-bottom:0">' + opcoesFuncao('Técnico Veterinário') + '</select></div>' +
+    '<div class="form-linha"><label class="campo-label">Função</label><select class="campo-input" id="nc-funcao" style="margin-bottom:0">' + opcoesFuncao('Responsável Técnico') + '</select></div>' +
     '<label class="form-check"><input type="checkbox" id="nc-admin" /><span class="txt">É administrador</span></label>' +
     '<label class="form-check"><input type="checkbox" id="nc-ulva" /><span class="txt">Também pode entrar no ULVA</span></label>' +
     '<div class="celula-vazio" style="padding:0;font-size:11.5px;text-align:left">Sem essa marcação, a pessoa entra só no AUDIT (app e portal). A senha do primeiro acesso no app é a própria matrícula.</div>',
