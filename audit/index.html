@@ -2528,7 +2528,41 @@ async function paginaFiscalizacoes() {
       kpiBox('Últimos 7 dias', recentes.length, recentes.length ? 'var(--orange)' : null, 'avisos de fiscalização') +
       kpiBox('Últimos 90 dias', fs.length, null, Object.entries(porOrgao).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([o, n]) => esc(o) + ': ' + n).join(' · ') || 'nenhum aviso') +
     '</div>' +
-    (fs.length ? fs.map(cartao).join('') : '<div class="celula-vazio">Nenhuma fiscalização informada ainda. Quando a loja avisar, ela aparece aqui e os veterinários das lojas próximas recebem o alerta no app.</div>');
+    (fs.length ? fs.map(cartao).join('') : '<div class="celula-vazio">Nenhuma fiscalização informada ainda. Quando a loja avisar, ela aparece aqui e os veterinários das lojas próximas recebem o alerta no app.</div>') +
+    (ehResp() ? '<div id="wa-contatos"></div>' : '');
+  if (ehResp()) desenharContatosWa();
+}
+// Números que falam com o robô do AUDIT no WhatsApp (mesmo número do Assistente ULVA).
+// Os veterinários já são reconhecidos pelo telefone da planilha das rotas.
+async function desenharContatosWa() {
+  const el = document.getElementById('wa-contatos'); if (!el) return;
+  let cs = [];
+  try { const r = await sb.from('vt_whatsapp_contatos').select('*').eq('ativo', true).order('loja'); cs = r.data || []; } catch (e) {}
+  el.innerHTML = '<h3 class="tit-secao" style="margin-top:28px">WhatsApp do AUDIT · quem pode avisar</h3>' +
+    '<div class="sub-box" style="margin-bottom:10px">A loja manda <b>audit</b> no WhatsApp do Assistente ULVA e informa a fiscalização. Os veterinários da planilha das rotas já são reconhecidos pelo telefone.</div>' +
+    '<div class="item-card" style="margin-bottom:12px"><div class="form-linha"><div style="max-width:120px"><label class="campo-label">Loja</label><input class="campo-input" id="wc-loja" inputmode="numeric"></div>' +
+    '<div><label class="campo-label">Nome</label><input class="campo-input" id="wc-nome" placeholder="ex.: Gerente Marcos"></div>' +
+    '<div><label class="campo-label">WhatsApp (com DDD)</label><input class="campo-input" id="wc-tel" inputmode="tel" placeholder="31 99999-9999"></div>' +
+    '<div style="max-width:190px"><label class="campo-label">Papel</label><select class="campo-input" id="wc-papel"><option value="loja">Loja</option><option value="coordenacao">Coordenação</option></select></div></div>' +
+    '<button class="btn-acao" onclick="adicionarContatoWa()">+ Adicionar número</button></div>' +
+    (cs.length ? '<div class="tabela-wrap"><table><thead><tr><th>Loja</th><th>Nome</th><th>WhatsApp</th><th>Papel</th><th></th></tr></thead><tbody>' +
+      cs.map((c) => '<tr><td style="font-weight:800">' + esc(c.loja || '—') + '</td><td>' + esc(c.nome || '') + '</td><td>' + esc(c.telefone) + '</td><td>' + (c.papel === 'coordenacao' ? 'Coordenação' : 'Loja') + '</td><td><button class="btn-acao secundario mini" onclick="removerContatoWa(' + c.id + ')">Remover</button></td></tr>').join('') +
+      '</tbody></table></div>' : '<div class="celula-vazio">Nenhum número cadastrado ainda.</div>');
+}
+async function adicionarContatoWa() {
+  let tel = (document.getElementById('wc-tel').value || '').replace(/\D/g, '');
+  if (tel.length === 10 || tel.length === 11) tel = '55' + tel;
+  if (tel.length < 12) return toast('Informe o WhatsApp com DDD.', 'erro');
+  const reg = { telefone: tel, nome: document.getElementById('wc-nome').value.trim() || null, loja: (document.getElementById('wc-loja').value || '').replace(/\D/g, '') || null, papel: document.getElementById('wc-papel').value, ativo: true };
+  const { error } = await sb.from('vt_whatsapp_contatos').upsert(reg, { onConflict: 'telefone' });
+  if (error) return toast('Não consegui salvar: ' + error.message, 'erro');
+  toast('Número liberado no robô do AUDIT (vale em até 10 minutos).'); desenharContatosWa();
+}
+async function removerContatoWa(id) {
+  if (!confirm('Tirar esse número do robô do AUDIT?')) return;
+  const { error } = await sb.from('vt_whatsapp_contatos').update({ ativo: false }).eq('id', id);
+  if (error) return toast('Não consegui: ' + error.message, 'erro');
+  desenharContatosWa();
 }
 function abrirNovaFiscalizacao() {
   const agora = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -2843,6 +2877,7 @@ async function iniciarDemo() {
   const DOCS = ['Alvará sanitário', 'AVCB (bombeiros)', 'Controle de pragas', 'Limpeza da caixa d\'água', 'Laudo de potabilidade da água', 'Atestados de saúde (ASO)'];
   db.vt_plano_dia = [];
   db.vt_fiscalizacoes = [];
+  db.vt_whatsapp_contatos = [];
   db.documentos_validade = [];
   LOJAS.forEach((l) => DOCS.forEach((doc) => { if (rnd() < 0.2) return; const d = new Date(agora + (Math.floor(rnd() * 260) - 40) * 24 * hora); db.documentos_validade.push({ id: 'dd' + db.documentos_validade.length, unidade: l[0], documento: doc, data_validade: d.toISOString().slice(0, 10), atualizado_por: escolhe(VETS).n, atualizado_em: iso(agora - Math.floor(rnd() * 60) * 24 * hora) }); }));
   // cliente "falso" com a mesma interface usada pelo portal
