@@ -944,6 +944,8 @@
   .rotulo-loja{background:#fff;border:1px solid #D5DBE5;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:700;color:#0E1B2C;box-shadow:none}.rotulo-loja:before{display:none}
   .leaflet-popup-content{font-size:12.5px;line-height:1.5}
 
+  /* Mapas (Leaflet) ficam dentro do próprio card: não passam por cima de janelas e menus. */
+  .leaflet-container { isolation: isolate; z-index: 0 !important; }
 </style>
 </head>
 <body>
