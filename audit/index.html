@@ -2078,7 +2078,7 @@ async function paginaEquipe() {
       (vet ? ' · <a class="link-vt" onclick="estado.vetRota=' + vet.id + ';irPara(\'rotas\')">rota</a> · <a class="link-vt" onclick="abrirRelatorioSemana(' + vet.id + ')">relatório</a>' : '') + '</td></tr>';
   }).join('');
   // veterinários da planilha de rotas que ainda não têm cadastro
-  const semCadastro = vetsPlanilha().filter((x) => !/provis/i.test(x.nome) && !equipe.concat(estado.equipeFora || []).some((c) => visitaDoVet({ veterinario_nome: c.nome }, x)));
+  const semCadastro = vetsPlanilha().filter((x) => !/sem veterin/i.test(sem(x.nome)) && !equipe.concat(estado.equipeFora || []).some((c) => visitaDoVet({ veterinario_nome: c.nome }, x)));
   const fora = estado.equipeFora || [];
   const nVet = equipe.filter((c) => perfilDe(c) === 'veterinario').length;
   main.innerHTML =
