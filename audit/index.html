@@ -330,6 +330,16 @@
   .foto-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: var(--radius-md); margin-bottom: 10px; }
   input[type="file"] { color: var(--text-secondary); font-size: 12.5px; }
   .modal-card.largo { max-width: 980px; }
+  /* modal da Equipe: campos em coluna e ferramentas em gaveta */
+  .mf-linha { margin-bottom: 16px; }
+  .mf-linha .campo-label { margin-bottom: 6px; }
+  details.gaveta-ferr { border: 1px solid var(--border); border-radius: 12px; margin-top: 4px; background: var(--card-bg); }
+  details.gaveta-ferr summary { cursor: pointer; list-style: none; padding: 13px 14px; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; }
+  details.gaveta-ferr summary::-webkit-details-marker { display: none; }
+  details.gaveta-ferr summary::after { content: '▾'; margin-left: auto; color: var(--text-secondary); transition: transform .2s; }
+  details.gaveta-ferr[open] summary::after { transform: rotate(180deg); }
+  details.gaveta-ferr .lista-ferr { padding: 0 14px 6px; border-top: 1px solid var(--border); }
+  details.gaveta-ferr .form-check { margin: 12px 0; }
   .zona-arrastar {
     border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 32px 20px;
     text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
@@ -1041,11 +1051,15 @@ function iniciais(n) { return String(n || '?').replace(/[^A-Za-zÀ-ÿ\s]/g, '').
 const ehResp = () => estado.perfil === 'responsavel';
 
 // ---------------------------------------------------------------- login
+// Marca de quem foi tirado do AUDIT (continua no ULVA): fica em ferramentas_bloqueadas
+const MARCA_SEM_AUDIT = 'audit:sem-acesso';
+const semAudit = (c) => (c.ferramentas_bloqueadas || []).includes(MARCA_SEM_AUDIT);
 function perfilDe(c) {
+  if (semAudit(c)) return null;
   const f = sem(c.funcao);
   // "Responsável técnico" é o veterinário (igual no app AUDIT)
   if (!c.is_admin && /respons\w* tecnic/.test(f)) return 'veterinario';
-  if (c.is_admin || /diretor|respons|coorden|sanitar|qualidade|supervisor/.test(f)) return 'responsavel';
+  if (c.is_admin || /diretor|administrativ|respons|coorden|sanitar|qualidade|supervisor/.test(f)) return 'responsavel';
   if (/veterin/.test(f)) return 'veterinario';
   return null;
 }
@@ -1060,6 +1074,7 @@ async function entrar() {
     const c = (data || []).find((x) => sem(x.nome) === sem(nome));
     if (!c) { box.innerHTML = '<div class="login-erro">Nome ou matrícula incorretos.</div>'; return; }
     const perfil = perfilDe(c);
+    if (semAudit(c)) { box.innerHTML = '<div class="login-erro">Seu acesso ao AUDIT foi retirado. Fale com o administrador.</div>'; return; }
     if (!perfil) { box.innerHTML = '<div class="login-erro">Acesso só para técnicos veterinários e responsáveis pela Visita Técnica.</div>'; return; }
     try { localStorage.setItem(CHAVE_SESSAO, JSON.stringify({ matricula: c.matricula, nome: c.nome })); } catch (e) {}
     await abrirSessao(c, perfil);
@@ -2017,7 +2032,7 @@ function fecharModal() { const el = document.getElementById('overlay-modal'); if
 // Mesmo cadastro do ULVA (tabela colaboradores): aqui aparecem só as pessoas do
 // AUDIT — função com Veterinário, Responsável, Diretoria, Coordenação, Sanitário,
 // Qualidade ou Supervisor, ou administradores.
-const FUNCOES_AUDIT = ['Responsável Técnico', 'Técnico Veterinário', 'Responsável · Visita Técnica', 'Diretoria'];
+const FUNCOES_AUDIT = ['Responsável Técnico', 'Técnico Veterinário', 'Responsável · Visita Técnica', 'Administrativo'];
 // Marca de "só AUDIT": a pessoa entra no app e no portal do AUDIT, mas não no
 // app nem no portal do ULVA (o ULVA recusa o login de quem tem essa marca).
 const MARCA_SOMENTE_AUDIT = 'ulva:sem-acesso';
@@ -2025,7 +2040,9 @@ const somenteAudit = (c) => (c.ferramentas_bloqueadas || []).includes(MARCA_SOME
 async function carregarEquipe() {
   const { data, error } = await sb.from('colaboradores').select('*').order('nome');
   if (error) throw error;
-  estado.equipe = (data || []).filter((c) => perfilDe(c)).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
+  const ord = (a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+  estado.equipe = (data || []).filter((c) => perfilDe(c)).sort(ord);
+  estado.equipeFora = (data || []).filter((c) => semAudit(c)).sort(ord);
   return estado.equipe;
 }
 function primeiroNome(n) { return sem(n).split(' ')[0] || ''; }
@@ -2035,7 +2052,7 @@ function visitaDaPessoa(v, c) {
   return sem(v.veterinario_nome) === sem(c.nome) || primeiroNome(v.veterinario_nome) === primeiroNome(c.nome);
 }
 function vetPlanilhaDe(c) { return vetsPlanilha().find((x) => visitaDoVet({ veterinario_nome: c.nome }, x)) || null; }
-function rotuloPerfil(c) { const p = perfilDe(c); return p === 'veterinario' ? 'Veterinário' : /diretor/.test(sem(c.funcao)) ? 'Diretoria' : 'Responsável'; }
+function rotuloPerfil(c) { const p = perfilDe(c); return p === 'veterinario' ? 'Veterinário' : /diretor|administrativ/.test(sem(c.funcao)) ? 'Administrativo' : 'Responsável'; }
 async function paginaEquipe() {
   if (!ehResp()) return irPara('visitas');
   const main = document.getElementById('conteudo-principal');
@@ -2057,20 +2074,23 @@ async function paginaEquipe() {
       '<td>' + vs.length + '</td>' +
       '<td>' + (p ? (vivo ? '<span class="pill verde">no app</span> ' : '') + haQuanto(p.registrado_em) + (p.unidade ? ' · loja ' + esc(p.unidade) : '') : '—') + '</td>' +
       '<td style="white-space:nowrap" onclick="event.stopPropagation()"><button class="link-editar" onclick="abrirModalEditarColaborador(\'' + c.id + '\')">Editar</button> ' +
-      '<button class="link-remover" onclick="removerColaborador(\'' + c.id + '\')">Remover</button>' +
+      '<button class="link-remover" onclick="tirarDoAudit(\'' + c.id + '\')">Tirar do AUDIT</button>' +
       (vet ? ' · <a class="link-vt" onclick="estado.vetRota=' + vet.id + ';irPara(\'rotas\')">rota</a> · <a class="link-vt" onclick="abrirRelatorioSemana(' + vet.id + ')">relatório</a>' : '') + '</td></tr>';
   }).join('');
   // veterinários da planilha de rotas que ainda não têm cadastro
-  const semCadastro = vetsPlanilha().filter((x) => !/provis/i.test(x.nome) && !equipe.some((c) => visitaDoVet({ veterinario_nome: c.nome }, x)));
+  const semCadastro = vetsPlanilha().filter((x) => !/provis/i.test(x.nome) && !equipe.concat(estado.equipeFora || []).some((c) => visitaDoVet({ veterinario_nome: c.nome }, x)));
+  const fora = estado.equipeFora || [];
   const nVet = equipe.filter((c) => perfilDe(c) === 'veterinario').length;
   main.innerHTML =
     cabecalho('Equipe', 'Quem usa o AUDIT · clique no nome para ver o histórico dos últimos 30 dias', '<button class="btn-acao" onclick="abrirModalNovoColaborador()">+ Adicionar colaborador</button>') +
-    '<div class="resumo-perdas">' + kpiBox('Pessoas cadastradas', equipe.length) + kpiBox('Veterinários', nVet) + kpiBox('Responsáveis e diretoria', equipe.length - nVet) +
+    '<div class="resumo-perdas">' + kpiBox('Pessoas cadastradas', equipe.length) + kpiBox('Veterinários', nVet) + kpiBox('Responsáveis e administrativo', equipe.length - nVet) +
       kpiBox('No app agora', pos.filter((p) => Date.now() - new Date(p.registrado_em).getTime() < 30 * 60000).length, 'var(--green)', 'posição nos últimos 30 min') + '</div>' +
     '<div class="tabela-wrap"><table><thead><tr><th>Nome</th><th>Matrícula</th><th>Perfil</th><th>Lojas na rota</th><th>Checklists (30 dias)</th><th>Última posição</th><th></th></tr></thead><tbody>' +
       (linhas || '<tr><td colspan="7" class="celula-vazio">Ninguém cadastrado ainda.</td></tr>') + '</tbody></table></div>' +
     (semCadastro.length ? '<h3 class="tit-secao">Na planilha de rotas, sem cadastro</h3><div class="item-card"><div class="sub-box" style="margin-bottom:10px">Esses veterinários têm rota, mas ainda não conseguem entrar no app nem no portal.</div><div class="chips-wrap" style="margin:0">' +
       semCadastro.map((x) => '<button class="chip" onclick="abrirModalNovoColaborador(\'' + esc(x.nome.split('/')[0].replace(/\(.*\)/, '').trim()).replace(/'/g, '&#39;') + '\')">+ ' + esc(x.nome) + '</button>').join('') + '</div></div>' : '') +
+    (fora.length ? '<details class="gaveta-ferr" style="margin-top:18px"><summary>Sem acesso ao AUDIT (' + fora.length + ') · continuam no ULVA</summary><div class="lista-ferr">' +
+      fora.map((c) => '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0"><div><b>' + esc(c.nome) + '</b> <span class="sub-box">· ' + esc(c.funcao || '') + ' · ' + esc(c.matricula) + '</span></div><button class="btn-acao secundario mini" onclick="devolverAudit(\'' + c.id + '\')">Devolver acesso</button></div>').join('') + '</div></details>' : '') +
     '<div class="sub-box" style="margin-top:12px">Quem você cadastra aqui entra só no AUDIT, a não ser que marque "Também pode entrar no ULVA". A senha do primeiro acesso no app é a própria matrícula. A função define o que a pessoa vê — Veterinário vê as visitas dele; Responsável e Diretoria veem tudo.</div>';
 }
 function opcoesFuncao(atual) {
@@ -2079,9 +2099,9 @@ function opcoesFuncao(atual) {
 }
 function abrirModalNovoColaborador(nome) {
   abrirModal('Adicionar colaborador',
-    '<div class="form-linha"><label class="campo-label">Nome</label><input class="campo-input" id="nc-nome" value="' + esc(nome || '') + '" style="margin-bottom:0" /></div>' +
-    '<div class="form-linha"><label class="campo-label">Matrícula</label><input class="campo-input" id="nc-matricula" style="margin-bottom:0" /></div>' +
-    '<div class="form-linha"><label class="campo-label">Função</label><select class="campo-input" id="nc-funcao" style="margin-bottom:0">' + opcoesFuncao('Responsável Técnico') + '</select></div>' +
+    '<div class="mf-linha"><label class="campo-label">Nome</label><input class="campo-input" id="nc-nome" value="' + esc(nome || '') + '" style="margin-bottom:0" /></div>' +
+    '<div class="mf-linha"><label class="campo-label">Matrícula</label><input class="campo-input" id="nc-matricula" style="margin-bottom:0" /></div>' +
+    '<div class="mf-linha"><label class="campo-label">Função</label><select class="campo-input" id="nc-funcao" style="margin-bottom:0">' + opcoesFuncao('Responsável Técnico') + '</select></div>' +
     '<label class="form-check"><input type="checkbox" id="nc-admin" /><span class="txt">É administrador</span></label>' +
     '<label class="form-check"><input type="checkbox" id="nc-ulva" /><span class="txt">Também pode entrar no ULVA</span></label>' +
     '<div class="celula-vazio" style="padding:0;font-size:11.5px;text-align:left">Sem essa marcação, a pessoa entra só no AUDIT (app e portal). A senha do primeiro acesso no app é a própria matrícula.</div>',
@@ -2105,17 +2125,18 @@ function abrirModalEditarColaborador(id) {
   const c = (estado.equipe || []).find((x) => x.id === id); if (!c) return;
   const bloq = c.ferramentas_bloqueadas || [];
   abrirModal('Editar colaborador',
-    '<div class="form-linha"><label class="campo-label">Nome</label><input class="campo-input" id="ec-nome" value="' + esc(c.nome) + '" style="margin-bottom:0" /></div>' +
-    '<div class="form-linha"><label class="campo-label">Matrícula</label><input class="campo-input" id="ec-matricula" value="' + esc(c.matricula) + '" style="margin-bottom:0" /></div>' +
-    '<div class="form-linha"><label class="campo-label">Função</label><select class="campo-input" id="ec-funcao" style="margin-bottom:0">' + opcoesFuncao(c.funcao) + '</select></div>' +
+    '<div class="mf-linha"><label class="campo-label">Nome</label><input class="campo-input" id="ec-nome" value="' + esc(c.nome) + '" style="margin-bottom:0" /></div>' +
+    '<div class="mf-linha"><label class="campo-label">Matrícula</label><input class="campo-input" id="ec-matricula" value="' + esc(c.matricula) + '" style="margin-bottom:0" /></div>' +
+    '<div class="mf-linha"><label class="campo-label">Função</label><select class="campo-input" id="ec-funcao" style="margin-bottom:0">' + opcoesFuncao(c.funcao) + '</select></div>' +
     '<label class="form-check"><input type="checkbox" id="ec-admin"' + (c.is_admin ? ' checked' : '') + ' /><span class="txt">É administrador</span></label>' +
     '<label class="form-check"><input type="checkbox" id="ec-ulva"' + (somenteAudit(c) ? '' : ' checked') + ' /><span class="txt">Também pode entrar no ULVA</span></label>' +
-    '<div class="form-linha" style="margin-top:16px;"><label class="campo-label">Ferramentas liberadas no portal</label>' +
-      '<div class="celula-vazio" style="padding:8px 0; font-size:11.5px; text-align:left">Desmarque o que essa pessoa não deve ver. Não afeta administradores — eles sempre veem tudo.</div>' +
-      FERRAMENTAS_AUDIT.map((f) => '<label class="form-check" style="margin-bottom:10px"><input type="checkbox" id="ec-ferr-' + f.chave + '"' + (bloq.includes('audit:' + f.chave) ? '' : ' checked') + ' /><span class="txt">' + f.nome + '</span></label>').join('') +
-    '</div>',
+    '<details class="gaveta-ferr"><summary>Ferramentas liberadas no portal <span id="ec-ferr-total" class="sub-box">' + FERRAMENTAS_AUDIT.filter((f) => !bloq.includes('audit:' + f.chave)).length + ' de ' + FERRAMENTAS_AUDIT.length + '</span></summary><div class="lista-ferr">' +
+      '<div class="sub-box" style="margin:10px 0 4px">Desmarque o que essa pessoa não deve ver. Não vale para administradores — eles sempre veem tudo.</div>' +
+      FERRAMENTAS_AUDIT.map((f) => '<label class="form-check"><input type="checkbox" class="ec-ferr" id="ec-ferr-' + f.chave + '"' + (bloq.includes('audit:' + f.chave) ? '' : ' checked') + ' onchange="contarFerr()" /><span class="txt">' + f.nome + '</span></label>').join('') +
+    '</div></details>',
     'Salvar alterações', () => salvarEdicaoColaborador(id));
 }
+function contarFerr() { const el = document.getElementById('ec-ferr-total'); if (el) el.textContent = document.querySelectorAll('.ec-ferr:checked').length + ' de ' + FERRAMENTAS_AUDIT.length; }
 async function salvarEdicaoColaborador(id) {
   const c = (estado.equipe || []).find((x) => x.id === id); if (!c) return;
   const nome = document.getElementById('ec-nome').value.trim();
@@ -2133,15 +2154,30 @@ async function salvarEdicaoColaborador(id) {
     fecharModal(); toast('Colaborador atualizado.', 'sucesso'); paginaEquipe();
   } catch (e) { toast('Não consegui salvar: ' + e.message, 'erro'); }
 }
-async function removerColaborador(id) {
+async function tirarDoAudit(id) {
   const c = (estado.equipe || []).find((x) => x.id === id); if (!c) return;
-  if (String(c.matricula) === String(estado.usuario.matricula)) { toast('Você não pode remover o seu próprio cadastro.', 'erro'); return; }
-  if (!confirm('Remover "' + c.nome + '"?\n\nEle deixa de entrar no AUDIT (e no ULVA, se tinha acesso). As visitas que ele fez continuam no histórico.')) return;
+  if (String(c.matricula) === String(estado.usuario.matricula)) { toast('Você não pode tirar o seu próprio acesso.', 'erro'); return; }
   try {
-    const { error } = await sb.from('colaboradores').delete().eq('id', id);
+    if (somenteAudit(c)) {
+      // só usa o AUDIT: tirar do AUDIT = apagar o cadastro
+      if (!confirm('Tirar "' + c.nome + '" do AUDIT?\n\nEle só usa o AUDIT, então o cadastro é apagado. As visitas que ele fez continuam no histórico.')) return;
+      const { error } = await sb.from('colaboradores').delete().eq('id', id);
+      if (error) throw error;
+    } else {
+      if (!confirm('Tirar "' + c.nome + '" do AUDIT?\n\nEle deixa de entrar no AUDIT (app e portal), mas continua no ULVA como está hoje.')) return;
+      const { error } = await sb.from('colaboradores').update({ ferramentas_bloqueadas: (c.ferramentas_bloqueadas || []).concat(MARCA_SEM_AUDIT) }).eq('id', id);
+      if (error) throw error;
+    }
+    toast('Acesso ao AUDIT retirado.', 'sucesso'); paginaEquipe();
+  } catch (e) { toast('Não consegui tirar o acesso: ' + e.message, 'erro'); }
+}
+async function devolverAudit(id) {
+  const c = (estado.equipeFora || []).find((x) => x.id === id); if (!c) return;
+  try {
+    const { error } = await sb.from('colaboradores').update({ ferramentas_bloqueadas: (c.ferramentas_bloqueadas || []).filter((x) => x !== MARCA_SEM_AUDIT) }).eq('id', id);
     if (error) throw error;
-    toast('Colaborador removido.', 'sucesso'); paginaEquipe();
-  } catch (e) { toast('Não consegui remover: ' + e.message, 'erro'); }
+    toast('Acesso ao AUDIT devolvido.', 'sucesso'); paginaEquipe();
+  } catch (e) { toast('Não consegui devolver o acesso: ' + e.message, 'erro'); }
 }
 
 // ---------------------------------------------------------------- histórico da pessoa (30 dias)
