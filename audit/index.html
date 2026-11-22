@@ -984,6 +984,7 @@
       <button class="nav-item nav-vt" data-pagina="geral" data-so-resp onclick="irPara('geral')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span><span>Visão geral</span></button>
       <button class="nav-item nav-vt" data-pagina="mapa" data-so-resp onclick="irPara('mapa')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span><span>Mapa dos veterinários</span></button>
       <button class="nav-item nav-vt" data-pagina="rotas" data-so-resp onclick="irPara('rotas')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></span><span>Rotas</span></button>
+      <button class="nav-item nav-vt" data-pagina="plano" data-so-resp onclick="irPara('plano')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 15h2M14 15h2"/></svg></span><span>Plano do dia</span></button>
       <button class="nav-item nav-vt" data-pagina="visitas" onclick="irPara('visitas')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span><span>Visitas</span></button>
       <button class="nav-item nav-vt" data-pagina="correcoes" onclick="irPara('correcoes')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span><span>Correções</span></button>
       <button class="nav-item nav-vt" data-pagina="lojas" onclick="irPara('lojas')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg></span><span>Lojas</span></button>
@@ -1171,6 +1172,7 @@ function renderizar() {
   const p = estado.pagina;
   if (p === 'lojas') return paginaLojas();
   if (p === 'equipe') return paginaEquipe();
+  if (p === 'plano') return paginaPlano();
   if (p === 'geral') return paginaGeral();
   if (p === 'mapa') return paginaMapa();
   if (p === 'visitas') return paginaVisitas();
@@ -1978,11 +1980,11 @@ async function abrirRelatorioSemana(vetId, deslocSemana) {
 // =============================================================================
 
 // ---------------------------------------------------------------- rotas (#)
-const PAGINAS = ['geral', 'mapa', 'rotas', 'visitas', 'correcoes', 'lojas', 'equipe', 'perguntas'];
+const PAGINAS = ['geral', 'mapa', 'rotas', 'plano', 'visitas', 'correcoes', 'lojas', 'equipe', 'perguntas'];
 // Ferramentas do portal que dá para liberar/esconder por pessoa (Equipe → Editar).
 // Ficam no mesmo campo do ULVA (ferramentas_bloqueadas), com o prefixo "audit:".
 const FERRAMENTAS_AUDIT = [
-  { chave: 'geral', nome: 'Visão geral' }, { chave: 'mapa', nome: 'Mapa dos veterinários' }, { chave: 'rotas', nome: 'Rotas' },
+  { chave: 'geral', nome: 'Visão geral' }, { chave: 'mapa', nome: 'Mapa dos veterinários' }, { chave: 'rotas', nome: 'Rotas' }, { chave: 'plano', nome: 'Plano do dia' },
   { chave: 'visitas', nome: 'Visitas' }, { chave: 'correcoes', nome: 'Correções' }, { chave: 'lojas', nome: 'Lojas' },
   { chave: 'equipe', nome: 'Equipe' }, { chave: 'perguntas', nome: 'Perguntas' },
 ];
@@ -2007,7 +2009,7 @@ async function aplicarRota() {
     if (p === 'loja' && arg) { if (bloqueada('lojas')) return irPara(paginaInicial()); await garantirBase(); return mostrarLoja(arg); }
     if (p === 'pessoa' && arg) { if (!ehResp() || bloqueada('equipe')) return irPara(paginaInicial()); await garantirBase(); return mostrarPessoa(arg); }
   } catch (e) { main.innerHTML = '<div class="celula-vazio">Erro ao carregar: ' + esc(e.message) + '</div>'; return; }
-  if (!ehResp() && ['geral', 'mapa', 'rotas', 'perguntas', 'equipe'].includes(p)) return irPara(paginaInicial());
+  if (!ehResp() && ['geral', 'mapa', 'rotas', 'plano', 'perguntas', 'equipe'].includes(p)) return irPara(paginaInicial());
   if (PAGINAS.includes(p)) return mostrarPagina(p);
   irPara(paginaInicial());
 }
@@ -2406,6 +2408,85 @@ function mostrarLoja(u) {
     (antigas.length ? (estado.lojaTudo === x.u ? '<h3 class="tit-secao">Mais antigos</h3>' + tabela(antigas) : '<div style="margin-top:12px"><button class="btn-acao secundario" onclick="estado.lojaTudo=\'' + esc(x.u) + '\';mostrarLoja(\'' + esc(x.u) + '\')">Ver checklists mais antigos (' + antigas.length + ')</button></div>') : '');
 }
 
+
+// ---------------------------------------------------------------- plano do dia
+// Tabela vt_plano_dia: uma linha por veterinário (matrícula) por dia, com as
+// lojas na ordem do trajeto. O veterinário marca no app ("Visitar hoje"); aqui
+// o responsável vê e pode montar ou mudar a rota dele.
+const MAX_PLANO = 10;
+function hojeIso() { const d = new Date(); return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+async function paginaPlano() {
+  if (!ehResp()) return irPara('visitas');
+  const main = document.getElementById('conteudo-principal');
+  const data = estado.planoData || hojeIso();
+  let equipe, planos = [];
+  try { equipe = await carregarEquipe(); } catch (e) { main.innerHTML = '<div class="celula-vazio">Não consegui carregar: ' + esc(e.message) + '</div>'; return; }
+  try { planos = (await sb.from('vt_plano_dia').select('*').eq('data', data)).data || []; } catch (e) {}
+  estado.planos = planos;
+  const vets = equipe.filter((c) => perfilDe(c) === 'veterinario');
+  const R = (estado.rotas && estado.rotas.lojas) || {};
+  const nomeLoja = (n) => (R[n] && R[n].nome) ? ' · ' + esc(R[n].nome) : '';
+  const cards = vets.map((c) => {
+    const p = planos.find((x) => String(x.vet_matricula) === String(c.matricula));
+    const vet = vetPlanilhaDe(c);
+    const lojas = (p && p.lojas) || [];
+    const origem = p ? (p.origem === 'portal' ? 'Sugerido por ' + esc(p.sugerido_por || 'responsável') : 'Marcado pelo veterinário') + ' · ' + haQuanto(p.atualizado_em) : 'Sem plano para este dia';
+    return '<div class="item-card" style="margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<div class="avatar-box" style="width:34px;height:34px;font-size:11px">' + esc(iniciais(c.nome)) + '</div>' +
+      '<div style="flex:1;min-width:180px"><div style="font-weight:800">' + esc(c.nome) + '</div><div class="sub-box">' + origem + (vet ? ' · rota com ' + vet.rota.length + ' lojas' : ' · sem rota na planilha') + '</div></div>' +
+      '<button class="btn-acao' + (lojas.length ? ' secundario' : '') + '" onclick="abrirModalPlano(\'' + esc(c.matricula) + '\')">' + (lojas.length ? 'Mudar rota' : 'Montar rota') + '</button></div>' +
+      (lojas.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px">' + lojas.map((n, i) => '<span class="pill" style="cursor:pointer" onclick="abrirLoja(\'' + esc(n) + '\')"><b>' + (i + 1) + '.</b>&nbsp;Loja ' + esc(n) + nomeLoja(n) + '</span>').join('') + '</div>' : '') + '</div>';
+  }).join('');
+  main.innerHTML = cabecalho('Plano do dia', 'Lojas que cada veterinário vai visitar · ele marca no app e você pode montar ou mudar aqui',
+      '<input type="date" class="campo-input" style="width:auto;margin:0;height:42px" value="' + data + '" onchange="estado.planoData=this.value;renderizar()">') +
+    (vets.length ? cards : '<div class="celula-vazio">Nenhum veterinário cadastrado na Equipe.</div>') +
+    '<div class="sub-box" style="margin-top:12px">O veterinário vê a rota montada aqui no app, em "Visitar hoje", e pode seguir o trajeto no Google Maps. Se ele mudar, aparece aqui como "Marcado pelo veterinário".</div>';
+}
+function abrirModalPlano(mat) {
+  const c = (estado.equipe || []).find((x) => String(x.matricula) === String(mat)); if (!c) return;
+  const p = (estado.planos || []).find((x) => String(x.vet_matricula) === String(mat));
+  estado.planoSel = ((p && p.lojas) || []).slice();
+  estado.planoVet = c;
+  abrirModal('Rota de ' + esc(c.nome.split(' ')[0]) + ' · ' + dataCurta(estado.planoData || hojeIso()), '<div id="plano-corpo"></div>', 'Salvar rota', salvarPlano);
+  desenharPlanoModal();
+}
+function desenharPlanoModal() {
+  const el = document.getElementById('plano-corpo'); if (!el) return;
+  const c = estado.planoVet, vet = vetPlanilhaDe(c), sel = estado.planoSel;
+  const R = (estado.rotas && estado.rotas.lojas) || {};
+  const ult = {}; estado.visitas.forEach((v) => { const u = String(v.unidade || ''); if (u && !ult[u]) ult[u] = v.finalizada_em; });
+  const dias = (n) => ult[n] ? Math.floor((Date.now() - new Date(ult[n]).getTime()) / 864e5) : null;
+  const rota = vet ? vet.rota.map((r) => String(r.loja)).sort((a, b) => (dias(b) ?? 1e9) - (dias(a) ?? 1e9)) : [];
+  el.innerHTML =
+    '<label class="campo-label">Lojas de hoje (' + sel.length + ' de ' + MAX_PLANO + ')</label>' +
+    '<div class="item-card" style="padding:10px 12px;margin-bottom:14px">' + (sel.length ? sel.map((n, i) =>
+      '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><b style="width:22px">' + (i + 1) + '.</b><span style="flex:1">Loja ' + esc(n) + (R[n] ? ' · ' + esc(R[n].nome) : '') + '</span>' +
+      (i ? '<button class="btn-acao secundario mini" onclick="moverPlano(' + i + ',-1)">↑</button>' : '') +
+      (i < sel.length - 1 ? '<button class="btn-acao secundario mini" onclick="moverPlano(' + i + ',1)">↓</button>' : '') +
+      '<button class="btn-acao secundario mini" onclick="alternarPlano(\'' + esc(n) + '\')">✕</button></div>').join('') : '<div class="sub-box">Nenhuma loja ainda. Marque abaixo ou digite o número.</div>') + '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:16px"><input id="plano-add" class="campo-input" style="margin:0" placeholder="Adicionar loja pelo número" inputmode="numeric" onkeydown="if(event.key===\'Enter\')adicionarPlano()"><button class="btn-acao secundario" onclick="adicionarPlano()">Adicionar</button></div>' +
+    (rota.length ? '<details class="gaveta-ferr" open><summary>Rota de ' + esc(vet.nome) + ' · mais tempo sem visita primeiro</summary><div class="lista-ferr">' +
+      rota.map((n) => { const d = dias(n); return '<label class="form-check"><input type="checkbox"' + (sel.includes(n) ? ' checked' : '') + ' onchange="alternarPlano(\'' + esc(n) + '\')" /><span class="txt">Loja ' + esc(n) + (R[n] ? ' · ' + esc(R[n].nome) : '') + ' <span class="sub-box">· ' + (d == null ? 'nunca visitada' : d + ' dia(s) sem visita') + '</span></span></label>'; }).join('') +
+      '</div></details>' : '<div class="sub-box">' + esc(c.nome) + ' não tem rota na planilha. Adicione as lojas pelo número.</div>');
+}
+function alternarPlano(n) {
+  const s = estado.planoSel, i = s.indexOf(n);
+  if (i >= 0) s.splice(i, 1); else { if (s.length >= MAX_PLANO) { toast('No máximo ' + MAX_PLANO + ' lojas (limite do Google Maps).', 'erro'); desenharPlanoModal(); return; } s.push(n); }
+  desenharPlanoModal();
+}
+function moverPlano(i, d) { const s = estado.planoSel; const j = i + d; if (j < 0 || j >= s.length) return; [s[i], s[j]] = [s[j], s[i]]; desenharPlanoModal(); }
+function adicionarPlano() { const el = document.getElementById('plano-add'); const n = String(Number((el.value || '').replace(/\D/g, ''))); if (n && n !== '0' && !estado.planoSel.includes(n)) alternarPlano(n); else el.value = ''; }
+async function salvarPlano() {
+  const c = estado.planoVet, data = estado.planoData || hojeIso();
+  const reg = { data, vet_matricula: String(c.matricula), vet_nome: c.nome, lojas: estado.planoSel.slice(), origem: 'portal', sugerido_por: estado.usuario.nome, atualizado_em: new Date().toISOString() };
+  try {
+    const { data: ja } = await sb.from('vt_plano_dia').select('id').eq('data', data).eq('vet_matricula', reg.vet_matricula);
+    const r = ja && ja.length ? await sb.from('vt_plano_dia').update(reg).eq('id', ja[0].id) : await sb.from('vt_plano_dia').insert(reg);
+    if (r.error) throw r.error;
+    fecharModal(); toast('Rota salva. ' + c.nome.split(' ')[0] + ' já vê no app.', 'sucesso'); paginaPlano();
+  } catch (e) { toast('Não consegui salvar: ' + e.message, 'erro'); }
+}
+
 document.getElementById('login-matricula').addEventListener('keydown', (e) => { if (e.key === 'Enter') entrar(); });
 // ---------------------------------------------------------------- demonstração
 // ulva.com.br/vt?demo — tudo simulado no navegador (nada é gravado no banco).
@@ -2547,6 +2628,7 @@ async function iniciarDemo() {
   db.colaboradores = [{ id: 'dc0', nome: 'Responsável (demonstração)', matricula: 'demo', funcao: 'Diretoria', setor: 'prevencao', is_admin: true }]
     .concat(VETS.map((v, i) => ({ id: 'dc' + (i + 1), nome: v.n, matricula: v.m, funcao: 'Técnico Veterinário', setor: 'prevencao', is_admin: false })));
   const DOCS = ['Alvará sanitário', 'AVCB (bombeiros)', 'Controle de pragas', 'Limpeza da caixa d\'água', 'Laudo de potabilidade da água', 'Atestados de saúde (ASO)'];
+  db.vt_plano_dia = [];
   db.documentos_validade = [];
   LOJAS.forEach((l) => DOCS.forEach((doc) => { if (rnd() < 0.2) return; const d = new Date(agora + (Math.floor(rnd() * 260) - 40) * 24 * hora); db.documentos_validade.push({ id: 'dd' + db.documentos_validade.length, unidade: l[0], documento: doc, data_validade: d.toISOString().slice(0, 10), atualizado_por: escolhe(VETS).n, atualizado_em: iso(agora - Math.floor(rnd() * 60) * 24 * hora) }); }));
   // cliente "falso" com a mesma interface usada pelo portal
