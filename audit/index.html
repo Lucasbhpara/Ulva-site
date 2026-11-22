@@ -1810,7 +1810,7 @@ async function paginaRotas() {
       '<div class="item-card" style="margin-top:14px"><div class="card-tit" style="padding:0 0 6px">Locais a validar</div><div class="sub-box" style="margin-bottom:8px">' + aprox.length + ' lojas foram localizadas pelo nome (pino laranja). Clique, confira e ajuste arrastando o pino.' + (semLocal.length ? ' ' + semLocal.length + ' ainda sem local.' : '') + '</div>' +
       aprox.slice(0, 200).map((l) => '<div class="parada" style="cursor:pointer" onclick="focarLoja(\'' + esc(l.numero) + '\')"><b>' + esc(l.numero) + ' · ' + esc(l.nome) + '</b><span>' + (l.lat == null ? 'sem local' : esc((l.local_ref || '').split(',').slice(0, 3).join(','))) + '</span></div>').join('') + '</div>';
   }
-  main.innerHTML = cabecalho('Rotas dos veterinários', R.vets.length + ' veterinários · ' + lojasTodas.length + ' lojas · ' + (lojasTodas.length - aprox.length - semLocal.length) + ' com local confirmado') +
+  main.innerHTML = cabecalho('Rotas dos veterinários', R.vets.length + ' veterinários · ' + lojasTodas.length + ' lojas · ' + (lojasTodas.length - aprox.length - semLocal.length) + ' com local confirmado', seletorVetRota(R)) +
     '<div class="mapa-layout"><div class="item-card" style="padding:0;overflow:hidden"><div id="mapa-rotas" class="mapa-vt"></div></div><div>' + painel + '</div></div>';
   if (!window.L) return;
   const m = L.map('mapa-rotas'); mapaAtual = m;
@@ -2485,6 +2485,72 @@ async function salvarPlano() {
     if (r.error) throw r.error;
     fecharModal(); toast('Rota salva. ' + c.nome.split(' ')[0] + ' já vê no app.', 'sucesso'); paginaPlano();
   } catch (e) { toast('Não consegui salvar: ' + e.message, 'erro'); }
+}
+
+
+// ---------------------------------------------------------------- editar rota (só Administrativo e administradores)
+// Troca as lojas da rota de um veterinário (tabela vt_rota_lojas): ordem,
+// tirar e incluir lojas. A sugestão do app ("Visitar hoje") usa essa rota.
+const podeEditarRota = () => !!(estado.usuario && (estado.usuario.is_admin || /administrativ/.test(sem(estado.usuario.funcao))));
+function seletorVetRota(R) {
+  return '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+    '<select class="campo-input" style="margin:0;height:42px;min-width:220px;width:auto" onchange="estado.vetRota=this.value?Number(this.value):null;renderizar()">' +
+      '<option value="">Todos os veterinários</option>' +
+      R.vets.map((x) => '<option value="' + x.id + '"' + (estado.vetRota === x.id ? ' selected' : '') + '>' + esc(x.nome) + ' · ' + x.rota.length + ' lojas</option>').join('') +
+    '</select>' +
+    (podeEditarRota() ? '<button class="btn-acao"' + (estado.vetRota ? '' : ' disabled style="opacity:.5;cursor:not-allowed"') + ' onclick="abrirEditarRota()">✏️ Editar rota</button>' : '') +
+  '</div>';
+}
+function abrirEditarRota() {
+  if (!podeEditarRota()) return toast('Só o Administrativo e os administradores editam rotas.', 'erro');
+  if (MODO_DEMO) return toast('Na demonstração não dá para editar rotas (elas são as reais).', 'erro');
+  const v = vetSelecionado(); if (!v) return toast('Escolha um veterinário primeiro.', 'erro');
+  estado.rotaEdit = { vet: v, lojas: v.rota.map((r) => ({ loja: String(r.loja), supervisor: r.supervisor || null })) };
+  abrirModal('Editar rota · ' + esc(v.nome), '<div id="rota-edit"></div>', 'Salvar rota', salvarRotaEditada);
+  document.querySelector('#overlay-modal .modal-card').style.maxWidth = '560px';
+  desenharEditarRota();
+}
+function desenharEditarRota() {
+  const el = document.getElementById('rota-edit'); if (!el) return;
+  const L = estado.rotas.lojas, ls = estado.rotaEdit.lojas;
+  el.innerHTML =
+    '<div class="sub-box" style="margin-bottom:10px">Use ↑ ↓ para mudar a ordem, ✕ para tirar a loja e o campo abaixo para incluir. A sugestão do app usa essa rota.</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px"><input id="rota-add" class="campo-input" style="margin:0" placeholder="Número da loja para incluir" inputmode="numeric" onkeydown="if(event.key===\'Enter\')incluirLojaRota()"><button class="btn-acao secundario" onclick="incluirLojaRota()">+ Incluir</button></div>' +
+    '<div class="item-card" style="padding:6px 12px;max-height:46vh;overflow:auto">' + (ls.length ? ls.map((r, i) => {
+      const l = L[r.loja];
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;' + (i ? 'border-top:1px solid var(--border)' : '') + '"><b style="width:26px">' + (i + 1) + '.</b>' +
+        '<div style="flex:1;min-width:0"><div style="font-weight:700">Loja ' + esc(r.loja) + (l ? ' · ' + esc(l.nome) : '') + '</div>' +
+        '<div class="sub-box">' + (l ? (l.lat == null ? 'sem local no mapa' : l.local_status === 'aproximado' ? 'local a validar' : 'local confirmado') : '⚠️ loja não encontrada no cadastro') + (r.supervisor ? ' · sup. ' + esc(r.supervisor) : '') + '</div></div>' +
+        '<button class="btn-acao secundario mini" ' + (i ? '' : 'disabled style="opacity:.35"') + ' onclick="moverLojaRota(' + i + ',-1)">↑</button>' +
+        '<button class="btn-acao secundario mini" ' + (i < ls.length - 1 ? '' : 'disabled style="opacity:.35"') + ' onclick="moverLojaRota(' + i + ',1)">↓</button>' +
+        '<button class="btn-acao secundario mini" onclick="tirarLojaRota(' + i + ')">✕</button></div>';
+    }).join('') : '<div class="sub-box" style="padding:10px 0">Rota vazia.</div>') + '</div>' +
+    '<div class="sub-box" style="margin-top:8px">' + ls.length + ' loja(s) na rota.</div>';
+}
+function moverLojaRota(i, d) { const ls = estado.rotaEdit.lojas, j = i + d; if (j < 0 || j >= ls.length) return; [ls[i], ls[j]] = [ls[j], ls[i]]; desenharEditarRota(); }
+function tirarLojaRota(i) { estado.rotaEdit.lojas.splice(i, 1); desenharEditarRota(); }
+function incluirLojaRota() {
+  const el = document.getElementById('rota-add'); const n = String(Number((el.value || '').replace(/\D/g, '')));
+  if (!n || n === '0') return;
+  if (!estado.rotas.lojas[n]) { toast('Loja ' + n + ' não está no cadastro de lojas.', 'erro'); return; }
+  if (estado.rotaEdit.lojas.some((r) => r.loja === n)) { toast('A loja ' + n + ' já está na rota.', 'erro'); return; }
+  // supervisor: o mesmo que a loja tem na rota de outro veterinário, se tiver
+  let sup = null; estado.rotas.vets.forEach((x) => x.rota.forEach((r) => { if (String(r.loja) === n && r.supervisor && !sup) sup = r.supervisor; }));
+  estado.rotaEdit.lojas.push({ loja: n, supervisor: sup });
+  el.value = ''; desenharEditarRota();
+  const box = document.querySelector('#rota-edit .item-card'); if (box) box.scrollTop = box.scrollHeight;
+}
+async function salvarRotaEditada() {
+  const { vet, lojas } = estado.rotaEdit, c = sbVT();
+  const btn = document.getElementById('modal-btn-salvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    const novas = lojas.map((r, i) => ({ vet_id: vet.id, loja: r.loja, ordem: i + 1, supervisor: r.supervisor }));
+    const d = await c.from('vt_rota_lojas').delete().eq('vet_id', vet.id);
+    if (d.error) throw d.error;
+    if (novas.length) { const r = await c.from('vt_rota_lojas').insert(novas); if (r.error) throw r.error; }
+    fecharModal(); toast('Rota de ' + vet.nome + ' salva.', 'sucesso');
+    await carregarRotas(true); renderizar();
+  } catch (e) { toast('Não consegui salvar a rota: ' + e.message, 'erro'); btn.disabled = false; btn.textContent = 'Salvar rota'; }
 }
 
 document.getElementById('login-matricula').addEventListener('keydown', (e) => { if (e.key === 'Enter') entrar(); });
