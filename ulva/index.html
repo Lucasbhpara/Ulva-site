@@ -903,6 +903,9 @@
     <input class="campo-input" id="login-nome" placeholder="Como está cadastrado" autocomplete="off" />
     <label class="campo-label">Matrícula</label>
     <input class="campo-input" id="login-matricula" placeholder="Sua matrícula" autocomplete="off" />
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary);margin:2px 0 14px;cursor:pointer;">
+      <input type="checkbox" id="login-lembrar" checked style="width:16px;height:16px;" /> Manter conectado neste computador
+    </label>
     <button class="btn-primario" id="btn-entrar" onclick="fazerLogin()">Entrar</button>
     <div class="login-rodape">
       <b>Conectado ao Supabase.</b> Este painel lê e grava na mesma base usada pelo aplicativo do celular — qualquer
@@ -1200,6 +1203,17 @@ function mostrarToast(mensagem, tipo) {
 // =============================================================================
 // Login
 // =============================================================================
+const LOGIN_SALVO = 'ulva_login_salvo';
+// Ao abrir o portal: se este computador tem um login salvo, entra sozinho.
+function entrarComLoginSalvo() {
+  let salvo = null;
+  try { salvo = JSON.parse(localStorage.getItem(LOGIN_SALVO) || 'null'); } catch (e) {}
+  if (!salvo || !salvo.nome || !salvo.matricula) return;
+  document.getElementById('login-nome').value = salvo.nome;
+  document.getElementById('login-matricula').value = salvo.matricula;
+  fazerLogin();
+}
+
 async function fazerLogin() {
   const nome = document.getElementById('login-nome').value;
   const matricula = document.getElementById('login-matricula').value.trim();
@@ -1216,14 +1230,23 @@ async function fazerLogin() {
     if (error) throw error;
     const encontrado = (data || []).find((c) => normalizar(c.nome) === normalizar(nome));
     if (!encontrado) {
+      try { localStorage.removeItem(LOGIN_SALVO); } catch (e) {}
       erroBox.innerHTML = '<div class="login-erro">Nome ou matrícula incorretos.</div>';
       return;
     }
     if (!encontrado.is_admin) {
+      try { localStorage.removeItem(LOGIN_SALVO); } catch (e) {}
       erroBox.innerHTML = '<div class="login-erro">Acesso restrito a administradores.</div>';
       return;
     }
     estado.usuario = encontrado;
+    // "Manter conectado": guarda nome e matrícula só neste navegador, para entrar
+    // sozinho da próxima vez. "Sair" apaga.
+    try {
+      const lembrar = document.getElementById('login-lembrar');
+      if (!lembrar || lembrar.checked) localStorage.setItem(LOGIN_SALVO, JSON.stringify({ nome: encontrado.nome, matricula: String(encontrado.matricula) }));
+      else localStorage.removeItem(LOGIN_SALVO);
+    } catch (e) {}
     document.getElementById('tela-login').style.display = 'none';
     document.getElementById('app-shell').classList.add('ativo');
     document.getElementById('sidebar-avatar').textContent = iniciais(encontrado.nome);
@@ -1253,6 +1276,7 @@ async function fazerLogin() {
 }
 function fazerLogout() {
   estado.usuario = null;
+  try { localStorage.removeItem(LOGIN_SALVO); } catch (e) {}
   document.getElementById('app-shell').classList.remove('ativo');
   document.getElementById('tela-login').style.display = 'flex';
   document.getElementById('login-matricula').value = '';
@@ -14568,6 +14592,7 @@ function fecharModal() {
 
 // Enter no login
 document.getElementById('login-matricula').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') fazerLogin(); });
+entrarComLoginSalvo();
 document.getElementById('login-nome').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') document.getElementById('login-matricula').focus(); });
 </script>
 <div id="assinatura-impressao">ULVA · Unified Live View App · by Lucas Alberto</div>
