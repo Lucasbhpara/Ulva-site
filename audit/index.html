@@ -994,7 +994,7 @@
       <button class="nav-item nav-vt" data-pagina="fiscalizacoes" onclick="irPara('fiscalizacoes')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></span><span>Fiscalizações</span></button>
       <button class="nav-item nav-vt" data-pagina="perguntas" data-so-resp onclick="irPara('perguntas')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span>Perguntas</span></button>
       <button class="nav-item nav-vt" data-pagina="equipe" data-so-resp onclick="irPara('equipe')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span>Equipe</span></button>
-      <button class="nav-item nav-vt" data-pagina="acessos" data-so-resp onclick="irPara('acessos')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg></span><span>Acessos</span></button>
+      <button class="nav-item nav-vt" data-pagina="acessos" data-so-dono style="display:none" onclick="irPara('acessos')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg></span><span>Acessos</span></button>
     </div>
     <div class="sidebar-footer">
       <div class="sidebar-user">
@@ -1096,12 +1096,16 @@ async function abrirSessao(c, perfil) {
   document.getElementById('sidebar-nome').textContent = c.nome;
   document.getElementById('sidebar-funcao').textContent = perfil === 'responsavel' ? (c.funcao || 'Responsável · Visita Técnica') : 'Técnico veterinário';
   document.querySelectorAll('[data-so-resp]').forEach((el) => (el.style.display = ehResp() ? '' : 'none'));
+  document.querySelectorAll('[data-so-dono]').forEach((el) => (el.style.display = ehDono() ? '' : 'none'));
   document.querySelectorAll('.nav-item[data-pagina]').forEach((el) => { if (bloqueada(el.dataset.pagina)) el.style.display = 'none'; });
   if (location.hash.length > 1) aplicarRota(); else irPara(paginaInicial());
 }
 // Quem entrou no AUDIT (página Acessos). O app grava as entradas dele; aqui
 // grava as do portal, no máximo uma a cada 30 minutos por pessoa neste
 // navegador. Dentro do app (WebView) não grava, porque o app já registrou.
+// Páginas que só o dono do AUDIT vê (Lucas Alberto), nenhum outro administrador.
+const DONOS = ['7990353'];
+function ehDono() { const u = estado.usuario; return !!u && (DONOS.includes(String(u.matricula)) || (MODO_DEMO && u.matricula === 'demo')); }
 const DENTRO_APP = /[?&]app=1\b/.test(location.search) || !!window.ReactNativeWebView;
 function registrarAcessoPortal(c) {
   if (DENTRO_APP || !c || c.matricula === 'demo') return;
@@ -2009,7 +2013,7 @@ const PAGINAS = ['geral', 'mapa', 'rotas', 'plano', 'visitas', 'correcoes', 'loj
 const FERRAMENTAS_AUDIT = [
   { chave: 'geral', nome: 'Visão geral' }, { chave: 'mapa', nome: 'Mapa dos veterinários' }, { chave: 'rotas', nome: 'Rotas' }, { chave: 'plano', nome: 'Plano do dia' },
   { chave: 'visitas', nome: 'Visitas' }, { chave: 'correcoes', nome: 'Correções' }, { chave: 'lojas', nome: 'Lojas' }, { chave: 'ranking', nome: 'Ranking por supervisor' }, { chave: 'fiscalizacoes', nome: 'Fiscalizações' },
-  { chave: 'equipe', nome: 'Equipe' }, { chave: 'acessos', nome: 'Acessos' }, { chave: 'perguntas', nome: 'Perguntas' },
+  { chave: 'equipe', nome: 'Equipe' }, { chave: 'perguntas', nome: 'Perguntas' },
 ];
 function bloqueada(p) { const u = estado.usuario; if (!u || u.is_admin) return false; return (u.ferramentas_bloqueadas || []).includes('audit:' + p); }
 function paginaInicial() { const ordem = ehResp() ? ['geral', 'visitas', 'lojas', 'correcoes'] : ['visitas', 'lojas', 'correcoes']; return ordem.find((p) => !bloqueada(p)) || 'visitas'; }
@@ -2488,7 +2492,7 @@ function paginaRanking() {
 // Tabela vt_acessos: cada entrada no app AUDIT (login ou app reaberto já
 // logado) e no portal. Só para os responsáveis.
 async function paginaAcessos() {
-  if (!ehResp()) return irPara('visitas');
+  if (!ehDono()) return irPara(paginaInicial());
   const main = document.getElementById('conteudo-principal');
   const dias = estado.acessosDias || 1, visao = estado.acessosVisao || 'lista', onde = estado.acessosOnde || 'todos';
   const ini = new Date(); ini.setHours(0, 0, 0, 0); ini.setDate(ini.getDate() - (dias - 1));
