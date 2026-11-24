@@ -994,6 +994,7 @@
       <button class="nav-item nav-vt" data-pagina="fiscalizacoes" onclick="irPara('fiscalizacoes')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></span><span>Fiscalizações</span></button>
       <button class="nav-item nav-vt" data-pagina="perguntas" data-so-resp onclick="irPara('perguntas')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span>Perguntas</span></button>
       <button class="nav-item nav-vt" data-pagina="equipe" data-so-resp onclick="irPara('equipe')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span>Equipe</span></button>
+      <button class="nav-item nav-vt" data-pagina="acessos" data-so-resp onclick="irPara('acessos')"><span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg></span><span>Acessos</span></button>
     </div>
     <div class="sidebar-footer">
       <div class="sidebar-user">
@@ -1088,6 +1089,7 @@ async function entrar() {
 }
 async function abrirSessao(c, perfil) {
   estado.usuario = c; estado.perfil = perfil;
+  registrarAcessoPortal(c);
   document.getElementById('tela-login').style.display = 'none';
   document.getElementById('app-shell').classList.add('ativo');
   document.getElementById('sidebar-avatar').textContent = iniciais(c.nome);
@@ -1096,6 +1098,20 @@ async function abrirSessao(c, perfil) {
   document.querySelectorAll('[data-so-resp]').forEach((el) => (el.style.display = ehResp() ? '' : 'none'));
   document.querySelectorAll('.nav-item[data-pagina]').forEach((el) => { if (bloqueada(el.dataset.pagina)) el.style.display = 'none'; });
   if (location.hash.length > 1) aplicarRota(); else irPara(paginaInicial());
+}
+// Quem entrou no AUDIT (página Acessos). O app grava as entradas dele; aqui
+// grava as do portal, no máximo uma a cada 30 minutos por pessoa neste
+// navegador. Dentro do app (WebView) não grava, porque o app já registrou.
+const DENTRO_APP = /[?&]app=1\b/.test(location.search) || !!window.ReactNativeWebView;
+function registrarAcessoPortal(c) {
+  if (DENTRO_APP || !c || c.matricula === 'demo') return;
+  try {
+    const ult = JSON.parse(localStorage.getItem('audit:ultimo-acesso') || 'null');
+    if (ult && ult.m === c.matricula && Date.now() - ult.t < 30 * 60 * 1000) return;
+    localStorage.setItem('audit:ultimo-acesso', JSON.stringify({ m: c.matricula, t: Date.now() }));
+  } catch (e) {}
+  const plat = /android/i.test(navigator.userAgent) ? 'Android' : /iphone|ipad/i.test(navigator.userAgent) ? 'iPhone' : 'Computador';
+  sb.from('vt_acessos').insert({ nome: c.nome, matricula: c.matricula, funcao: c.funcao || null, origem: 'portal', plataforma: plat }).then(() => {}, () => {});
 }
 function sair() { try { localStorage.removeItem(CHAVE_SESSAO); localStorage.removeItem('ulva:vt:sessao'); } catch (e) {} location.hash = ''; location.reload(); }
 async function restaurar() {
@@ -1178,6 +1194,7 @@ function renderizar() {
   if (p === 'ranking') return paginaRanking();
   if (p === 'fiscalizacoes') return paginaFiscalizacoes();
   if (p === 'equipe') return paginaEquipe();
+  if (p === 'acessos') return paginaAcessos();
   if (p === 'plano') return paginaPlano();
   if (p === 'geral') return paginaGeral();
   if (p === 'mapa') return paginaMapa();
@@ -1986,13 +2003,13 @@ async function abrirRelatorioSemana(vetId, deslocSemana) {
 // =============================================================================
 
 // ---------------------------------------------------------------- rotas (#)
-const PAGINAS = ['geral', 'mapa', 'rotas', 'plano', 'visitas', 'correcoes', 'lojas', 'ranking', 'fiscalizacoes', 'equipe', 'perguntas'];
+const PAGINAS = ['geral', 'mapa', 'rotas', 'plano', 'visitas', 'correcoes', 'lojas', 'ranking', 'fiscalizacoes', 'equipe', 'acessos', 'perguntas'];
 // Ferramentas do portal que dá para liberar/esconder por pessoa (Equipe → Editar).
 // Ficam no mesmo campo do ULVA (ferramentas_bloqueadas), com o prefixo "audit:".
 const FERRAMENTAS_AUDIT = [
   { chave: 'geral', nome: 'Visão geral' }, { chave: 'mapa', nome: 'Mapa dos veterinários' }, { chave: 'rotas', nome: 'Rotas' }, { chave: 'plano', nome: 'Plano do dia' },
   { chave: 'visitas', nome: 'Visitas' }, { chave: 'correcoes', nome: 'Correções' }, { chave: 'lojas', nome: 'Lojas' }, { chave: 'ranking', nome: 'Ranking por supervisor' }, { chave: 'fiscalizacoes', nome: 'Fiscalizações' },
-  { chave: 'equipe', nome: 'Equipe' }, { chave: 'perguntas', nome: 'Perguntas' },
+  { chave: 'equipe', nome: 'Equipe' }, { chave: 'acessos', nome: 'Acessos' }, { chave: 'perguntas', nome: 'Perguntas' },
 ];
 function bloqueada(p) { const u = estado.usuario; if (!u || u.is_admin) return false; return (u.ferramentas_bloqueadas || []).includes('audit:' + p); }
 function paginaInicial() { const ordem = ehResp() ? ['geral', 'visitas', 'lojas', 'correcoes'] : ['visitas', 'lojas', 'correcoes']; return ordem.find((p) => !bloqueada(p)) || 'visitas'; }
@@ -2467,6 +2484,47 @@ function paginaRanking() {
     (linhas || '<tr><td colspan="9" class="celula-vazio">Nenhuma loja com supervisor na planilha das rotas.</td></tr>') + '</tbody></table></div>';
 }
 
+// ---------------------------------------------------------------- acessos
+// Tabela vt_acessos: cada entrada no app AUDIT (login ou app reaberto já
+// logado) e no portal. Só para os responsáveis.
+async function paginaAcessos() {
+  if (!ehResp()) return irPara('visitas');
+  const main = document.getElementById('conteudo-principal');
+  const dias = estado.acessosDias || 1, visao = estado.acessosVisao || 'lista', onde = estado.acessosOnde || 'todos';
+  const ini = new Date(); ini.setHours(0, 0, 0, 0); ini.setDate(ini.getDate() - (dias - 1));
+  let q = sb.from('vt_acessos').select('*').gte('data_hora', ini.toISOString()).order('data_hora', { ascending: false }).limit(2000);
+  if (onde !== 'todos') q = q.eq('origem', onde);
+  let rs;
+  try { const { data, error } = await q; if (error) throw error; rs = data || []; } catch (e) { main.innerHTML = '<div class="celula-vazio">Não consegui carregar: ' + esc(e.message) + '</div>'; return; }
+  if (estado.pagina !== 'acessos') return;
+  const busca = sem(estado.acessosBusca || '');
+  if (busca) rs = rs.filter((r) => sem(r.nome + ' ' + (r.funcao || '') + ' ' + (r.matricula || '') + ' ' + (r.loja || '')).includes(busca));
+  const chave = (r) => r.matricula || r.nome;
+  const pessoas = {};
+  rs.forEach((r) => { const k = chave(r); const p = pessoas[k] || (pessoas[k] = { nome: r.nome, funcao: r.funcao, ultima: r, n: 0, app: 0, portal: 0, primeira: r }); p.n++; p[r.origem]++; p.primeira = r; });
+  const onde1 = (r) => (r.origem === 'app' ? '📱 App' : '💻 Portal') + (r.plataforma ? ' <span class="sub-box">' + esc(r.plataforma === 'android' ? 'Android' : r.plataforma === 'ios' ? 'iPhone' : r.plataforma) + '</span>' : '');
+  const chip = (k, v, tx) => '<button class="chip ' + (estado[k] === v || (!estado[k] && v === ({ acessosDias: 1, acessosVisao: 'lista', acessosOnde: 'todos' })[k]) ? 'ativo' : '') + '" onclick="estado.' + k + '=' + JSON.stringify(v).replace(/"/g, "'") + ';renderizar()">' + tx + '</button>';
+  const chips = chip('acessosDias', 1, 'Hoje') + chip('acessosDias', 7, '7 dias') + chip('acessosDias', 30, '30 dias') +
+    '<span style="width:12px"></span>' + chip('acessosOnde', 'todos', 'App e portal') + chip('acessosOnde', 'app', 'Só app') + chip('acessosOnde', 'portal', 'Só portal') +
+    '<span style="width:12px"></span>' + chip('acessosVisao', 'lista', 'Cada entrada') + chip('acessosVisao', 'pessoa', 'Por pessoa');
+  const buscaHtml = '<input class="input-busca" type="search" style="max-width:320px;margin:0 0 12px" placeholder="Buscar nome, função ou loja" value="' + esc(estado.acessosBusca || '') + '" onchange="estado.acessosBusca=this.value;renderizar()">';
+  let tabela;
+  if (visao === 'pessoa') {
+    const ps = Object.values(pessoas).sort((a, b) => new Date(b.ultima.data_hora) - new Date(a.ultima.data_hora));
+    tabela = '<table><thead><tr><th>Nome</th><th>Função</th><th>Primeira entrada</th><th>Última entrada</th><th style="text-align:center">Entradas</th><th>Onde</th></tr></thead><tbody>' +
+      (ps.map((p) => '<tr><td style="font-weight:700">' + esc(p.nome) + '</td><td>' + esc(p.funcao || '—') + '</td><td>' + dataHora(p.primeira.data_hora) + '</td><td style="font-weight:700">' + dataHora(p.ultima.data_hora) + '</td><td style="text-align:center">' + p.n + '</td><td>' + [p.app ? '📱 ' + p.app : '', p.portal ? '💻 ' + p.portal : ''].filter(Boolean).join(' · ') + '</td></tr>').join('') ||
+      '<tr><td colspan="6" class="celula-vazio">Ninguém entrou nesse período.</td></tr>') + '</tbody></table>';
+  } else {
+    tabela = '<table><thead><tr><th>Data e hora</th><th>Nome</th><th>Função</th><th>Onde</th><th>Loja</th></tr></thead><tbody>' +
+      (rs.map((r) => '<tr><td style="white-space:nowrap;font-weight:700">' + dataHora(r.data_hora) + '</td><td>' + esc(r.nome) + '</td><td>' + esc(r.funcao || '—') + '</td><td>' + onde1(r) + '</td><td>' + (r.loja ? 'Loja ' + esc(r.loja) : '—') + '</td></tr>').join('') ||
+      '<tr><td colspan="5" class="celula-vazio">Ninguém entrou nesse período.</td></tr>') + '</tbody></table>';
+  }
+  const periodo = dias === 1 ? 'hoje' : 'nos últimos ' + dias + ' dias';
+  main.innerHTML = cabecalho('Acessos', Object.keys(pessoas).length + ' pessoas e ' + rs.length + ' entradas ' + periodo + ' · app AUDIT e portal') +
+    '<div class="chips-wrap">' + chips + '</div>' + buscaHtml + '<div class="tabela-wrap">' + tabela + '</div>' +
+    '<p class="sub-box" style="margin-top:10px">Conta cada login e cada vez que o app é aberto já logado. No portal, no máximo uma entrada a cada 30 minutos por pessoa.</p>';
+}
+
 // ---------------------------------------------------------------- fiscalizações (órgãos públicos)
 // Tabela vt_fiscalizacoes. A loja avisa (robô do WhatsApp, app ou aqui no
 // portal) e o AUDIT estima as próximas lojas que podem receber o mesmo órgão:
@@ -2878,6 +2936,7 @@ async function iniciarDemo() {
   db.vt_plano_dia = [];
   db.vt_fiscalizacoes = [];
   db.vt_whatsapp_contatos = [];
+  db.vt_acessos = VETS.slice(0, 6).map((v, i) => ({ id: 'da' + i, nome: v.n, matricula: v.m, funcao: 'Técnico Veterinário', loja: null, origem: i % 3 ? 'app' : 'portal', plataforma: i % 3 ? 'android' : 'Computador', data_hora: iso(agora - (i * 47 + 12) * 60 * 1000) }));
   db.documentos_validade = [];
   LOJAS.forEach((l) => DOCS.forEach((doc) => { if (rnd() < 0.2) return; const d = new Date(agora + (Math.floor(rnd() * 260) - 40) * 24 * hora); db.documentos_validade.push({ id: 'dd' + db.documentos_validade.length, unidade: l[0], documento: doc, data_validade: d.toISOString().slice(0, 10), atualizado_por: escolhe(VETS).n, atualizado_em: iso(agora - Math.floor(rnd() * 60) * 24 * hora) }); }));
   // cliente "falso" com a mesma interface usada pelo portal
